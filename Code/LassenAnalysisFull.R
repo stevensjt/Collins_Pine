@@ -12,8 +12,9 @@ library(rpart.plot) #for prp(); version 2.1.2
 library(RColorBrewer) #for brewer.pal(); version 1.1-2
 library(grid) #for viewport(); version 3.4.3
 
-####1. Spatial Extractions####
+####1. Spatial Extractions; only need to do once per user####
 gis_path <- "/Users/jtstevens/Documents/New Mexico/USGS/GIS/Lassen/"
+#Note: Different users will need to specify their own GIS path.
 
 #1a. Topo data
 lots <- readOGR("./GIS/AllQQs_wHistData.shp") #EPSG 3310 CA Albers; NAD83
@@ -87,6 +88,8 @@ d_summary <-
   summarise(Tot_TPA = mean(Tot_TPA, na.rm = T),
             BA_Tot = mean(TotLvBA_ac),
             Mean_elev = mean(elev_mean),
+            Min_elev = round(min(elev_mean),0),
+            Max_elev = round(max(elev_mean),0),
             Mean_precip = mean(ppt_mean8110),
             Mean_temp = mean(tmx_mean8110)
   )
