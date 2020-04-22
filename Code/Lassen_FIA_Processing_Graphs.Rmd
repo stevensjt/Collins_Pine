@@ -54,7 +54,7 @@ ggplot(FIA_BA, aes(BALIVE_sqmha)) +
                  fill = palette.1) + 
   xlab(bquote("Live BA"~(m^2~ha^-1))) +
   ylab("Count") + 
-  ggsave(here("Figures", "BALive.png"),
+  ggsave(here("Figures/Lassen-Plumas", "BALive.png"),
          width = 6, height = 4, dpi = 500)
 
 #Histogram of live BA by ownership
@@ -68,7 +68,7 @@ ggplot(Private_BA, aes(BALIVE_sqmha)) +
                  linetype = "dashed") + 
   xlab(bquote("Live BA"~(m^2~ha^-1))) +
   ylab("Count") + 
-  ggsave(here("Figures", "BALive_ownership.png"),
+  ggsave(here("Figures/Lassen-Plumas", "BALive_ownership.png"),
          width = 6, height = 4, dpi = 500)
 
 #Density plot of live BA by ownership
@@ -80,7 +80,7 @@ ggplot(FIA_BA, aes(BALIVE_sqmha, fill = ownership)) +
   coord_cartesian(expand = FALSE) + 
   ylab("Density") +
   theme(legend.title = element_blank()) +
-  ggsave(here("Figures", "BALive_density_ownership.png"),
+  ggsave(here("Figures/Lassen-Plumas", "BALive_density_ownership.png"),
          width = 6, height = 4, dpi = 500)
 
 ##############################################################################
@@ -93,7 +93,7 @@ ggplot(FIA_BA, aes(AB_PI)) +
                  fill = palette.1) + 
   xlab("Fir-Pine Ratio") +
   ylab("Count") + 
-  ggsave(here("Figures", "Fir_Pine.png"),
+  ggsave(here("Figures/Lassen-Plumas", "Fir_Pine.png"),
          width = 6, height = 4, dpi = 500)  
   
 #Histogram of Fir-Pine ratio by ownership
@@ -107,7 +107,7 @@ ggplot(Private_BA, aes(AB_PI)) +
                  linetype = "dashed") + 
   xlab("Fir-Pine Ratio") +
   ylab("Count") + 
-  ggsave(here("Figures", "Fir_Pine_ownership.png"),
+  ggsave(here("Figures/Lassen-Plumas", "Fir_Pine_ownership.png"),
          width = 6, height = 4, dpi = 500)
 
 #Density plot of Fir-Pine ratio by ownership
@@ -119,7 +119,7 @@ ggplot(FIA_BA, aes(AB_PI, fill = ownership)) +
   coord_cartesian(expand = FALSE) + 
   ylab("Density") +
   theme(legend.title = element_blank()) +
-  ggsave(here("Figures", "Fir_Pine_density_ownership.png"),
+  ggsave(here("Figures/Lassen-Plumas", "Fir_Pine_density_ownership.png"),
          width = 6, height = 4, dpi = 500)
 
 #############################################################################
@@ -168,7 +168,7 @@ ggplot(FIA_density, aes(TPH)) +
                  origin = -0.5) + 
   facet_wrap(~dbh, scales = "free") + 
   ylab("Count") + 
-  ggsave(here("Figures", "TPH.png"),
+  ggsave(here("Figures/Lassen-Plumas", "TPH.png"),
          width = 6, height = 4, dpi = 500)
 
 #Histogram of TPH by diameter class AND ownership
@@ -185,7 +185,7 @@ ggplot(Private_density, aes(TPH)) +
                  origin = -0.5,
                  linetype = "dashed") + 
   ylab("Count") + 
-  ggsave(here("Figures", "TPH_ownership.png"),
+  ggsave(here("Figures/Lassen-Plumas", "TPH_ownership.png"),
          width = 6, height = 4, dpi = 500)
 
 #Density plot of TPH by diameter class AND ownership
@@ -198,7 +198,7 @@ ggplot(FIA_density, aes(TPH, fill = ownership)) +
   ylab("Density") +
   facet_wrap(~dbh, scales = "free") +
   theme(legend.title = element_blank()) +
-  ggsave(here("Figures", "TPH_density_ownership.png"),
+  ggsave(here("Figures/Lassen-Plumas", "TPH_density_ownership.png"),
          width = 6, height = 4, dpi = 500)
 
 

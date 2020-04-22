@@ -25,7 +25,7 @@ Creating a reproducible process of importing spatial data into R and selecting p
 options(digits = 22)
 
 #Loading FIA plot data (USFS FIA)
-FIA <- read.csv(here("data/CA_FIA", "CA_PLOTSNAP.csv"))
+FIA <- read.csv(here("large_files/CA_FIA", "CA_PLOTSNAP.csv"))
 
 #Filtering FIA for inventory year (INVYR) > 2011 (measure in 10-yr cycles).
 #Plots within these years have the same plot design protocol (DESIGNCD = 1).
@@ -57,7 +57,7 @@ FIA.sf <- FIA %>%
 #Subsetting boundaries of Lassen NF and Plumas NF.
 #EPSG 4269, NAD83.
 #Renaming column FORESTNAME and subsetting geometry to join with other boundaries.
-forest.sf <- st_read(here("GIS/USFS_boundaries", "S_USA.AdministrativeForest.shp")) %>%
+forest.sf <- st_read(here("large_files/USFS_boundaries", "S_USA.AdministrativeForest.shp")) %>%
   filter(FORESTNAME == "Lassen National Forest" |
            FORESTNAME == "Plumas National Forest") %>%
   rename(NAME = FORESTNAME) %>%
@@ -68,11 +68,10 @@ forest.sf <- st_read(here("GIS/USFS_boundaries", "S_USA.AdministrativeForest.shp
 #https://www.arcgis.com/home/item.html?id=2f227372477d4cddadc0cd0b002ec657
 #Subsetting boundaries of Tehama, Plumas, and Lassen counties.
 #EPSG 4326, WGS84... will have to transform
-county.sf <- st_read(here("GIS/CA_counties", "CA_counties.shp")) %>%
+county.sf <- st_read(here("large_files/CA_counties", "CA_counties.shp")) %>%
   filter(NAMELSAD == "Tehama County" |
            NAMELSAD == "Plumas County" |
            NAMELSAD == "Lassen County") %>%
-  rename(NAME = NAMELSAD) %>%
   dplyr::select(NAME, 
                 geometry)
 
@@ -87,21 +86,21 @@ boundary.sf <- rbind(forest.sf, county.sf)
 #Loading DEMs that fit within Lassen/Plumas National Forest (USGS National Map).
 #Kept the original file names from USGS National Map, 
 #just in case the DEMs need to be downloaded.
-DEM.1 <- raster(here("GIS/USGS_NED_13_n40w122_IMG",
+DEM.1 <- raster(here("large_files/USGS_NED_13_n40w122_IMG",
                      "USGS_NED_13_n40w122_IMG.img"))
-DEM.2 <- raster(here("GIS/USGS_NED_13_n41w121_IMG",
+DEM.2 <- raster(here("large_files/USGS_NED_13_n41w121_IMG",
                       "USGS_NED_13_n41w121_IMG.img"))
-DEM.3 <- raster(here("GIS/USGS_NED_13_n41w122_IMG",
+DEM.3 <- raster(here("large_files/USGS_NED_13_n41w122_IMG",
                      "USGS_NED_13_n41w122_IMG.img"))
-DEM.4 <- raster(here("GIS/USGS_NED_13_n42w122_IMG",
+DEM.4 <- raster(here("large_files/USGS_NED_13_n42w122_IMG",
                      "USGS_NED_13_n42w122_IMG.img"))
-DEM.5 <- raster(here("GIS/USGS_NED_13_n40w121_IMG",
+DEM.5 <- raster(here("large_files/USGS_NED_13_n40w121_IMG",
                      "USGS_NED_13_n40w121_IMG.img"))
-DEM.6 <- raster(here("GIS/USGS_NED_13_n40w123_IMG",
+DEM.6 <- raster(here("large_files/USGS_NED_13_n40w123_IMG",
                      "USGS_NED_13_n40w123_IMG.img"))
-DEM.7 <- raster(here("GIS/USGS_NED_13_n41w123_IMG",
+DEM.7 <- raster(here("large_files/USGS_NED_13_n41w123_IMG",
                      "USGS_NED_13_n41w123_IMG.img"))
-DEM.8 <- raster(here("GIS/USGS_NED_13_n42w121_IMG",
+DEM.8 <- raster(here("large_files/USGS_NED_13_n42w121_IMG",
                      "USGS_NED_13_n42w121_IMG.img"))
 
 ######################################################################################
@@ -184,12 +183,12 @@ liveba.FUN <- function(a,b)
 
 #Import FIA condition and tree list data.
 #Import forest and species reference lists from FIA.
-FIA_TREE <- read.csv(here("Data/CA_FIA", "CA_TREE.csv"))
-FIA_COND <- read.csv(here("Data/CA_FIA", "CA_COND.csv"))
+FIA_TREE <- read.csv(here("large_files/CA_FIA", "CA_TREE.csv"))
+FIA_COND <- read.csv(here("large_files/CA_FIA", "CA_COND.csv"))
 FIA_COND <- FIA_COND[,-which(sapply(FIA_COND, function(x)all(is.na(x))))] #Delete empty columns
 FIA_TREE <- FIA_TREE[,-which(sapply(FIA_TREE, function(x)all(is.na(x))))] #Delete empty columns
-fia_forest_types <- read.csv(here("Data/CA_FIA", "REF_FOREST_TYPE.csv"))
-fia_species_list <- read.csv(here("Data/CA_FIA", "REF_SPECIES.csv"))
+fia_forest_types <- read.csv(here("large_files/CA_FIA", "REF_FOREST_TYPE.csv"))
+fia_species_list <- read.csv(here("large_files/CA_FIA", "REF_SPECIES.csv"))
 
 #Renaming CN column to PLT_CN to join COND and TREE tables.
 #According to FIA user guide,
@@ -258,7 +257,6 @@ tree_join <- inner_join(forest_types_join, FIA_TREE, by = c("PLT_CN")) %>%
          SPCD) %>%
   filter(STATUSCD == 1 & DIA >= 12)
 
-  
 #Joining species data with tree_join data.
 #Start with 208 plots.
 #Species include: ABCO, ABMA, ABSH (A. shastensis), ACMA, CADE,
