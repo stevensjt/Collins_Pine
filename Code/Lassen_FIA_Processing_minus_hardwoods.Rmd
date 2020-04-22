@@ -1,5 +1,5 @@
 ---
-title: "Lassen FIA Processing"
+title: "Lassen FIA Processing - Hardwoods removed from dataset"
 author: "Alexis Bernal"
 date: "February 28, 2020"
 output: word_document
@@ -233,24 +233,23 @@ fia_forest_types <- fia_forest_types %>%
 #Joining forest type data with cond_check data.
 #Start with 217 plots.
 #Looked at forest types and some may not be good for comparison.
-#Removed bigleaf maple (n = 1) and mountain hemlock (n = 1).
-#End with 215 plots.
+#Removed bigleaf maple (n = 1), mountain hemlock (n = 1),
+#Canyon live oak (n = 2), and CA black oak (n = 5)
+#End with 208 plots.
 forest_types_join<- inner_join(condition_join, fia_forest_types, by = "FORTYPCD") %>%
   filter(MEANING != "Bigleaf maple") %>%
   filter(MEANING != "Mountain hemlock") %>%
+  filter(MEANING != "Canyon live oak") %>%
+  filter(MEANING != "California black oak") %>%
   dplyr::select(PLT_CN,
                 FORTYPCD,
+                TYPGRPCD,
                 MEANING)
 
-#Joining tree data with type_check data.
-#Start with 215 plots.
+#Joining tree data with forest type data.
+#Start with 208 plots.
 #Subsetting relevant columns for analysis.
 #Keeping only live trees with a DBH >= 12 inches (cut-off DBH for Collins Pine QQ data).
-#Calculate density of trees (>12 in DBH) for each plot.
-#Calculate density of trees 12-24 DBH, 24-36 DBH, 36+ DBH
-#Calculate live BA in sq m/ha for each plot
-#Removed plots where live BA < 9 m^2/ha (52 plots removed; 164 plots remain).
-#End with 164 plots
 tree_join <- inner_join(forest_types_join, FIA_TREE, by = c("PLT_CN")) %>%
   dplyr::select(PLT_CN,
          STATUSCD,
@@ -259,11 +258,18 @@ tree_join <- inner_join(forest_types_join, FIA_TREE, by = c("PLT_CN")) %>%
          SPCD) %>%
   filter(STATUSCD == 1 & DIA >= 12)
 
+  
 #Joining species data with tree_join data.
-#Start with 164 plots.
+#Start with 208 plots.
 #Species include: ABCO, ABMA, ABSH (A. shastensis), ACMA, CADE,
 #JUOC, PICO, PIJE, PILA, PIMO (p. monticola), PIPO, 
 #POBAT (P. balsimifera spp. trichocarpa), PSME, QUCH, and QUKE.
+#Removed hardwoods from dataset.
+#Some plots only had hardwoods (6 plots removed, 202 plots remain).
+#Calculate density of trees (>12 in DBH) for each plot.
+#Calculate density of trees 12-24 DBH, 24-36 DBH, 36+ DBH.
+#Calculate live BA in sq m/ha for each plot.
+#Removed plots where live BA < 9 m^2/ha (43 plots removed; 159 plots remain).
 #Estimating live BA by species for each plot.
 #Collapsing rows to have single value for each species in each plot.
 #Extracting relevant columns for analysis.
@@ -271,18 +277,20 @@ tree_join <- inner_join(forest_types_join, FIA_TREE, by = c("PLT_CN")) %>%
 #Collapsing rows to have single value for each species in each plot.
 #Replacing NA with 0 for live BA by species.
 #Renaming column headers to match Jens' code.
-#Estimating hardwood and conifer BA.
-#Removing plots with < 9 m^2 conifer BA (1 plot removed, 163 plots remain).
-#Removing plots without Abies or Pinus spp (4 plots removed, 159 plots remain)
-#Removing BALIVE_sqmha column (already in another table).
-#End with 159 plots.
+#Removing plots without Abies or Pinus spp (4 plots removed, 155 plots remain)
+#End with 155 plots.
 species_join <- inner_join(tree_join, fia_species_list, by = "SPCD") %>%
+  filter(SPECIES_SYMBOL != "QUCH2") %>%
+  filter(SPECIES_SYMBOL != "QUKE") %>%
+  filter(SPECIES_SYMBOL != "ACMA3") %>%
+  filter(SPECIES_SYMBOL != "POBAT") %>%
   group_by(PLT_CN) %>%
   mutate(DENS_12plus = density.FUN(TPA_UNADJ),
          DENS_12_24 = density.FUN(TPA_UNADJ[which(between(DIA, 11.99, 23.99))]),
          DENS_24_36 = density.FUN(TPA_UNADJ[which(between(DIA, 23.99, 35.99))]),
          DENS_36plus = density.FUN(TPA_UNADJ[which(DIA>35.99)]),
          BALIVE_sqmha = liveba.FUN(DIA, TPA_UNADJ)) %>%
+  ungroup() %>%
   filter(BALIVE_sqmha > 8.9) %>%
   group_by(PLT_CN, SPECIES_SYMBOL) %>%
   mutate(BA_met = liveba.FUN(DIA, TPA_UNADJ)) %>%
@@ -301,7 +309,6 @@ species_join <- inner_join(tree_join, fia_species_list, by = "SPCD") %>%
   rename(ABCO_met = ABCO,
          ABMA_met = ABMA,
          ABSH_met = ABSH,
-         ACMA_met = ACMA3,
          CADE_met = CADE27,
          JUNIPER_met = JUOC,
          PICO_met = PICO,
@@ -309,21 +316,15 @@ species_join <- inner_join(tree_join, fia_species_list, by = "SPCD") %>%
          PILA_met = PILA,
          PIMO_met = PIMO3,
          PIPO_met = PIPO,
-         POBA_met = POBAT,
-         PSME_met = PSME,
-         QUCH_met = QUCH2,
-         QUKE_met = QUKE) %>%
+         PSME_met = PSME) %>%
   group_by(PLT_CN) %>%
-  mutate(hardwood.ba = ACMA_met + POBA_met + QUCH_met + QUKE_met,
-         conifer.ba = BALIVE_sqmha - hardwood.ba,
-         AB_PI = (ABCO_met + ABMA_met + ABSH_met)/
+  mutate(AB_PI = (ABCO_met + ABMA_met + ABSH_met)/
            (ABCO_met + ABMA_met + ABSH_met + PICO_met + 
               PIJE_met + PILA_met + PIPO_met + PIMO_met)) %>%
-  filter(conifer.ba > 8.9) %>%
   filter(AB_PI >= 0)
   
 #Joining tables to get all information for plots.
-#Final FIA dataset has 159 plots.
+#Final FIA dataset has 155 plots.
 #Of those plots, 119 plots are under federal/state ownership,
 #And 40 plots are under private ownership.
 d_FIA <- inner_join(species_join, condition_join, by = "PLT_CN")
@@ -334,5 +335,5 @@ owner.check <- d_FIA %>%
   summarise(count = length(OWNGRPCD))
 
 #Export extracted FIA data to .csv file
-write.csv(d_FIA, here("Data/Derived", "d_FIA.csv"), row.names = FALSE)
+write.csv(d_FIA, here("Data/Derived", "d_FIA_minus_hardwoods.csv"), row.names = FALSE)
 ```
