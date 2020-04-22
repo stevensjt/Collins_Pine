@@ -1,0 +1,12 @@
+Folder with files too large to upload to GitHub including (name in code):
+CA_counties (California county boundaries downloaded from ESRI)
+USFS_boundaries (administrative boundaries of FS land downloaded from USFS website)
+CA_FIA (FIA data for California, including Plotsnap, Cond, Tree, and reference tables for forest type and species codes)
+USGS_NED_13_n40w121_IMG (DEM from USGS National Map Viewer for areas encompassing county/USFS boundaries)
+USGS_NED_13_n40w122_IMG
+USGS_NED_13_n40w123_IMG
+USGS_NED_13_n41w121_IMG
+USGS_NED_13_n41w122_IMG
+USGS_NED_13_n41w123_IMG
+USGS_NED_13_n42w121_IMG
+USGS_NED_13_n42w122_IMG
