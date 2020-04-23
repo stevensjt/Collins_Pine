@@ -56,8 +56,13 @@ FIA.sf <- FIA %>%
 #https://data.fs.usda.gov/geodata/edw/datasets.php?dsetCategory=boundaries
 #Subsetting boundaries of Lassen NF and Plumas NF.
 #EPSG 4269, NAD83.
+#ABCHECKME: The directory below, USFS_boundaries, exists within the GIS directory. 
+  #However there is no ".shp" file, only the external files.
+  #I think you tried to move it to large_files but something got messed up.
+  #It's not a large file and it should exist within "GIS" so I moved it back and updated below.
+  #Same thing with county boundaries. -JTS
 #Renaming column FORESTNAME and subsetting geometry to join with other boundaries.
-forest.sf <- st_read(here("large_files/USFS_boundaries", "S_USA.AdministrativeForest.shp")) %>%
+forest.sf <- st_read(here("GIS/USFS_boundaries", "S_USA.AdministrativeForest.shp")) %>%
   filter(FORESTNAME == "Lassen National Forest" |
            FORESTNAME == "Plumas National Forest") %>%
   rename(NAME = FORESTNAME) %>%
@@ -68,7 +73,7 @@ forest.sf <- st_read(here("large_files/USFS_boundaries", "S_USA.AdministrativeFo
 #https://www.arcgis.com/home/item.html?id=2f227372477d4cddadc0cd0b002ec657
 #Subsetting boundaries of Tehama, Plumas, and Lassen counties.
 #EPSG 4326, WGS84... will have to transform
-county.sf <- st_read(here("large_files/CA_counties", "CA_counties.shp")) %>%
+county.sf <- st_read(here("GIS/CA_counties", "CA_counties.shp")) %>%
   filter(NAMELSAD == "Tehama County" |
            NAMELSAD == "Plumas County" |
            NAMELSAD == "Lassen County") %>%
@@ -137,14 +142,16 @@ FIA.sf.clip <- st_intersection(FIA.sf, boundary.sf) %>%
   mutate(duplicates = duplicated(CN)) %>%
   filter(duplicates == "FALSE")
 
+#ABCHECKME similar file path issue here; DEM_mask.img is now in large_files.
+  #You had it in GIS/Files_from_R -JTS
 #Loading clipped DEM data.
-DEM <- raster(here("GIS/Files_from_R", "DEM_mask.img"))
+DEM <- raster(here("large_files", "DEM_mask.img"))
 
 #Checking alignments of layers.
 #For FIA plots.
 #For DEM.
 #Looks good.
-plot(DEM)
+plot(DEM) 
 plot(boundary.sf["geometry"], col = NA, border = "black", add = TRUE)
 plot(FIA.sf.clip["geometry"], col = "red", add = TRUE)
 

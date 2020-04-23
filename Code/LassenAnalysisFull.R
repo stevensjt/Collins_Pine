@@ -13,7 +13,7 @@ library(RColorBrewer) #for brewer.pal(); version 1.1-2
 library(grid) #for viewport(); version 3.4.3
 
 ####1. Spatial Extractions; only need to do once per user####
-gis_path <- "/Users/jtstevens/Documents/New Mexico/USGS/GIS/Lassen/"
+gis_path <- "./large_files/Lassen_GIS_JTS/"
 #Note: Different users will need to specify their own GIS path.
 
 #1a. Topo data
