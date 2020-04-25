@@ -27,10 +27,12 @@ JTS notes 4/24\
 -Started a manuscript draft in Manuscript/ folder\
 \
 To-do\
-1-Run the regression analyses, first with TPA. JTS started this, predictive power isn\'92t great. Considered both glmulti approach (as was done in Stephens et al 2018) and the random forest approach (which wasn\'92t done before). Didn\'92t get too far with random forests. We need to decide if our goal is to improve predictive capacity (which could include quadratic terms, interactions, etc, basically more variables) or to have a more tractable model that just does \'91ok\'92.  \
+1- Convert all TPA to TPH, and Basal Area to metric BA. This should be done very early on in the read-in process for the historical QQ data, using the appropriate correction factors.\
 \
-2-Once a reasonable model has been decided on, see how well the \'93best model\'94 explains the FIA data (it won\'92t explain it well). For Stephens et al 2018 we just applied the same regression tree splits as in the historical model, to the environment of the contemporary FIA plots (using the FIA dataframe with spatial extractions).\
+2-Run the regression analyses, first with TPH. JTS started this, predictive power isn\'92t great. Considered both glmulti approach (as was done in Stephens et al 2018) and the random forest approach (which wasn\'92t done before). Didn\'92t get too far with random forests. We need to decide if our goal is to improve predictive capacity (which could include quadratic terms, interactions, etc, basically more variables) or to have a more tractable model that just does \'91ok\'92.  \
 \
-3-Repeat steps 1 and 2 for basal area and pine fraction\
+3-Once a reasonable model has been decided on, see how well the \'93best model\'94 explains the FIA data (it won\'92t explain it well). For Stephens et al 2018 we just applied the same regression tree splits as in the historical model, to the environment of the contemporary FIA plots (using the FIA dataframe with spatial extractions).\
+\
+4-Repeat steps 2 and 3 for basal area and pine fraction\
 \
 4-Make some cool maps, as in the TPH predicted map that already exists in the repository. This is the most fun part but should be the final step.}
