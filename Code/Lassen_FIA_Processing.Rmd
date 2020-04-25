@@ -18,7 +18,7 @@ library(tidyverse) #Data wrangling and manipulation
 
 #Section I - Working with spatial data to subset FIA plots
 
-Creating a reproducible process of importing spatial data into R and selecting plots from FIA data to compare to Historical QQ data from Collins Pine. When looking for the appropriate "boundary" to constrain our sampling of FIA data, our choices were limited to Lassen/Plumas National Forest and multiple county boundaries (QQ plots located in Tehama and Plumas County... also added Lassen). Although we could look at NF or county boundaries separateley, I chose to inculde both to see if we could get a robust sample size for both public and private land for comparisons.  Parts of this section are pretty time-consuming processes (section distinguished) because the DEMs are such a huge dataset, so I exported the final clipped DEM to call on for future uses.
+Creating a reproducible process of importing spatial data into R and selecting plots from FIA data to compare to Historical QQ data from Collins Pine. When looking for the appropriate "boundary" to constrain our sampling of FIA data, our choices were limited to Lassen/Plumas National Forest and multiple county boundaries (QQ plots located in Tehama and Plumas County... also added Lassen). Although we could look at NF or county boundaries separateley, I chose to inculde both to see if we could get a robust sample size for both public and private land for comparisons.  Parts of this section are pretty time-consuming processes (section distinguished) because the DEMs are such a huge dataset, so I exported the final clipped DEM to call on for future uses. #ABCHECKME I think this section needs updating (not urgent)
 
 ```{r}
 #Loading DEM used by JTS for spatial extractions (originated from LANDFIRE)
@@ -60,7 +60,7 @@ FIA.sf <- FIA %>%
   mutate(x.coord = LON,
          y.coord = LAT) %>%
   st_as_sf(., coords = c("LON", "LAT")) %>%
-  st_set_crs(., st_crs("EPSG:4269"))
+  st_set_crs(., st_crs("EPSG:4269")) #ABCHECKME I'm getting an error message here: "invalid crs: EPSG:4269, reason: no arguments in initialization list"
 
 #Creating a boundary for DEM to clip FIA points to (polygon)
 DEM.boundary <- st_as_sfc(st_bbox(DEM))
