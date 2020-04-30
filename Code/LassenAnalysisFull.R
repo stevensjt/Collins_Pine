@@ -14,7 +14,7 @@ library(RColorBrewer) #for brewer.pal(); version 1.1-2
 library(grid) #for viewport(); version 3.4.3
 
 ####1. Spatial Extractions; only need to do once per user####
-gis_path <- "./large_files/Lassen_GIS_JTS/"
+#gis_path <- "./large_files/Lassen_GIS_JTS/"
 #Note: Different users will need to specify their own GIS path.
 
 #1a. Topo data
@@ -80,7 +80,18 @@ tmx <- #Mean annual max temperatures 1981-2010.
 
 ####2. Full data assembly and descriptions####
 #Note: This is for the historical data, eventually need to replicate this for the FIA data but have to figure out modeling first.
-d <- read_excel("Data/CollinsPine_HistData_ForJens.xlsx", sheet = "Sheet1")
+#Converted units from TPA to TPH and BA (sq ft/acre) to metric BA (sq m/ha)
+#Estimated pine fraction (a bit different than 2018 paper; divided by total live BA)
+d <- read_excel("Data/CollinsPine_HistData_ForJens.xlsx", sheet = "Sheet1") %>%
+  mutate(Tot_TPH = Tot_TPA/0.404686,
+         SP_BAmet = SP_BAac*0.229568,
+         PP_BAmet = PP_BAac*0.229568,
+         RF_BAmet = RF_BAac*0.229568,
+         DF_BAmet = DF_BAac*0.229568,
+         WF_BAmet = WF_BAac*0.229568,
+         IC_BAmet = IC_BAac*0.229568,
+         TotLvBA_met = SP_BAmet + PP_BAmet + RF_BAmet + DF_BAmet + WF_BAmet + IC_BAmet,
+         pine_fraction = (SP_BAmet + PP_BAmet)/TotLvBA_met)
 env.d <- read_csv("Data/Derived/lassen_QQ_extractions.csv")
 env.d <- env.d[,-c(1,5)]
 names(env.d)[which(names(env.d)=="aspect_cat")] <- "aspect"
@@ -90,7 +101,9 @@ d <- merge.data.frame(d,env.d,by.x = "LotCodeFull", by.y = "id")
 d_summary <- 
   d %>%
   summarise(Tot_TPA = mean(Tot_TPA, na.rm = T),
+            Tot_TPH = mean(Tot_TPH, na.rm = T),
             BA_Tot = mean(TotLvBA_ac),
+            BAmet_Tot = mean(TotLvBA_met),
             Mean_elev = mean(elev_mean),
             Min_elev = round(min(elev_mean),0),
             Max_elev = round(max(elev_mean),0),
@@ -100,8 +113,6 @@ d_summary <-
 
 d <- #Remove 30 rows that are missing climate data because they're under Lake Almanor
   d[-which(!complete.cases(d)),] 
-d$pine_fraction <- rowSums(d[,c("SP_BAac","PP_BAac")])/rowSums(d[,5:10])
-#hist(d$pine_fraction)
 
 ####3. Analysis####
 vfirst <- which(names(d)=="elev_mean")

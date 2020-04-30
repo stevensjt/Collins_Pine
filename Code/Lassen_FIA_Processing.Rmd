@@ -60,7 +60,7 @@ FIA.sf <- FIA %>%
   mutate(x.coord = LON,
          y.coord = LAT) %>%
   st_as_sf(., coords = c("LON", "LAT")) %>%
-  st_set_crs(., st_crs("EPSG:4269")) #ABCHECKME I'm getting an error message here: "invalid crs: EPSG:4269, reason: no arguments in initialization list"
+  st_set_crs(., st_crs("EPSG:4269"))
 
 #Creating a boundary for DEM to clip FIA points to (polygon)
 DEM.boundary <- st_as_sfc(st_bbox(DEM))
