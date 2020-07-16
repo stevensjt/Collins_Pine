@@ -35,7 +35,7 @@ options(digits = 22)
 #Loading FIA plot data (USFS FIA)
 FIA <- read.csv(here("large_files/CA_FIA", "CA_PLOTSNAP.csv"))
 
-#Filtering FIA for inventory year (INVYR) > 2011 (measure in 10-yr cycles).
+#Filtering FIA for inventory year (INVYR) > 2010 (measure in 10-yr cycles).
 #Plots within these years have the same plot design protocol (DESIGNCD = 1).
 #Plots within these years are also the most current (some plots are remeasured).
 #Creating new ID's based on coordinates to identify remeasured plots.
@@ -75,18 +75,18 @@ plot(DEM)
 plot(FIA.sf.clip["geometry"], col = "red", add = TRUE)
 plot(DEM.boundary, add = TRUE)
 
-#Start with 294 plots (FIA plots within boundary).
+#Start with 274 plots (FIA plots within boundary).
 #Extracting DEM values to FIA plots.
 #Converting elevation of FIA plots (originally in feet) to meters.
-#Selecting FIA plots within the elevation range of the QQ data (1113m - 2126m; removed 61 plots).
-#Selecting plots within "fuzzing" standards (150 m max discrepancy; removed 30 plots).
-#End with 203 plots.
+#Selecting FIA plots within the elevation range of the QQ data (1113m - 1939m; removed 70 plots).
+#Selecting plots within "fuzzing" standards (150 m max discrepancy; removed 22 plots).
+#End with 182 plots.
 elevation <- FIA.sf.clip %>%
   mutate(DEM.value = raster::extract(DEM,.),
          ELEV_met= as.double(ELEV/3.281),
          Elev.discrepancy = abs(ELEV_met - DEM.value)) %>%
   filter(ELEV_met > 1112 &
-           ELEV_met < 2127) %>%
+           ELEV_met < 1923) %>%
   filter(Elev.discrepancy < 151)
 ```
 
@@ -126,11 +126,11 @@ elevation <- elevation %>%
 #Joining COND table with subset of FIA data (PLT_CN is the foreign key).
 #Extracting columns describing "conditions" (e.g. condition code, stand age, disturbance, stocking).
 #Calculate number of conditions for each plot.
-#Start with 706 plots.
-#Remove plots with more than 1 condition (81 plots removed; 122 plots remain).
-#Remove plots with fire damage (31 plots removed; 91 plots remain).
-#Removed plots where FORTYPCD = 999 (1 plot with stand age = 0 (seedlings only), 90 plots remain).
-#End with 90 plots.
+#Start with 182 plots.
+#Remove plots with more than 1 condition (60 plots removed; 110 plots remain).
+#Remove plots with fire damage (29 plots removed; 81 plots remain).
+#Removed plots where FORTYPCD = 999 (1 plot with stand age = 0 (seedlings only), 80 plots remain).
+#End with 80 plots.
 condition_join <- inner_join(FIA_COND, elevation, by = c("PLT_CN", "INVYR")) %>%
   dplyr::select(PLT_CN,
                 INVYR,
@@ -157,21 +157,19 @@ fia_forest_types <- fia_forest_types %>%
   mutate(FORTYPCD = VALUE)
 
 #Joining forest type data with cond_check data.
-#Start with 90 plots.
+#Start with 80 plots.
 #Looked at forest types and some may not be good for comparison.
-#Removed California black oak (n = 4), canyon live oak (n = 2), tanoak (n = 1), and mountain hemlock (n = 1)
-#End with 82 plots.
+#Removed California black oak (n = 3), canyon live oak (n = 1), tanoak (n = 1)
+#End with 76 plots.
 forest_types_join<- inner_join(condition_join, fia_forest_types, by = "FORTYPCD") %>%
   filter(MEANING != "California black oak") %>%
-  filter(MEANING != "Canyon live oak") %>%
   filter(MEANING != "Tanoak") %>%
-  filter(MEANING != "Mountain hemlock") %>%
   dplyr::select(PLT_CN,
                 FORTYPCD,
                 MEANING)
 
 #Joining tree data with type_check data.
-#Start with 82 plots.
+#Start with 76 plots.
 #Subsetting relevant columns for analysis.
 #Keeping only live trees with a DBH >= 12 inches (cut-off DBH for Collins Pine QQ data).
 tree_join <- inner_join(forest_types_join, FIA_TREE, by = c("PLT_CN")) %>%
@@ -183,16 +181,16 @@ tree_join <- inner_join(forest_types_join, FIA_TREE, by = c("PLT_CN")) %>%
   filter(STATUSCD == 1 & DIA >= 12)
 
 #Joining species data with tree_join data.
-#Start with 82 plots.
+#Start with 76 plots.
 #Species include: ABCO, ABMA, ACMA (A. macrophyllum), ALRH (A. rhombifolia), CADE,
 #PICO, PIJE, PILA, PIMO (p. monticola), PIPO, 
 #POBAT (P. balsimifera spp. trichocarpa), PSME, QUCH, and QUKE.
 #Removed hardwoods from dataset.
-#None of the plots contained 100% hardwoods, 82 plots still remain.
+#None of the plots contained 100% hardwoods, 76 plots still remain.
 #Calculate density of trees (>12 in DBH) for each plot.
 #Calculate density of trees 12-24 DBH, 24-36 DBH, 36+ DBH.
 #Calculate live BA in sq m/ha for each plot.
-#Removed plots where live BA < 9 m^2/ha (6 plots removed; 76 plots remain).
+#Removed plots where live BA < 9 m^2/ha (5 plots removed; 71 plots remain).
 #Estimating live BA by species for each plot.
 #Collapsing rows to have single value for each species in each plot.
 #Extracting relevant columns for analysis.
@@ -200,8 +198,8 @@ tree_join <- inner_join(forest_types_join, FIA_TREE, by = c("PLT_CN")) %>%
 #Collapsing rows to have single value for each species in each plot.
 #Replacing NA with 0 for live BA by species.
 #Renaming column headers to match Jens' code.
-#Removing plots without Abies or Pinus spp (0 plots removed, 76 plots remain).
-#End with 76 plots.
+#Estimating pine ratio (BA pinus spp/total live basal area)
+#End with 71 plots.
 species_join <- inner_join(tree_join, fia_species_list, by = "SPCD") %>%
   filter(SPECIES_SYMBOL != "QUCH2") %>%
   filter(SPECIES_SYMBOL != "QUKE") %>%
@@ -240,24 +238,29 @@ species_join <- inner_join(tree_join, fia_species_list, by = "SPCD") %>%
          PIPO_met = PIPO,
          PSME_met = PSME) %>%
   group_by(PLT_CN) %>%
-  mutate(AB_PI = (ABCO_met + ABMA_met)/
-           (ABCO_met + ABMA_met + PICO_met + 
-              PIJE_met + PILA_met + PIPO_met + PIMO_met)) %>%
-  filter(AB_PI >= 0)
+  mutate(pine_fraction = (PIJE_met + PILA_met + PIPO_met + PIMO_met)/BALIVE_sqmha) %>%
+  ungroup()
 
 #Joining tables to get all information for plots.
-#Final FIA dataset has 76 plots.
+#Final FIA dataset has 71 plots.
 d_FIA <- inner_join(species_join, condition_join, by = "PLT_CN")
 d_FIA <- inner_join(d_FIA, forest_types_join, by = c("PLT_CN", "FORTYPCD"))
 
-#Of those plots, 54 plots are under federal/state ownership,
-#And 22 plots are under private ownership.
+#Of those plots, 47 plots are under federal/state ownership,
+#And 24 plots are under private ownership.
 owner.check <- d_FIA %>%
   group_by(OWNGRPCD) %>%
   summarise(count = length(OWNGRPCD))
 
 #Export extracted FIA data to .csv file
 write.csv(d_FIA, here("Data/Derived", "d_FIA.csv"), row.names = FALSE)
+
+#Converting final FIA dataset to .shp
+d_FIA_shp <- d_FIA %>%
+  st_as_sf(., coords = c("x.coord", "y.coord")) %>%
+  st_set_crs(., st_crs(FIA.sf.clip))
+
+st_write(d_FIA_shp, "GIS/d_FIA.shp")
 ```
 
 Section III: Creating graphs of outputs
@@ -332,42 +335,42 @@ ggplot(FIA_BA, aes(BALIVE_sqmha, fill = ownership)) +
          width = 6, height = 4, dpi = 500)
 
 ##############################################################################
-#Fir-Pine Ratio
+#Pine fraction
 ##############################################################################
-#Histogram of Fir-Pine ratio
-ggplot(FIA_BA, aes(AB_PI)) + 
+#Histogram of Pine fraction
+ggplot(FIA_BA, aes(pine_fraction)) + 
   geom_histogram(color = "black",
                  fill = palette.1) + 
-  xlab("Fir-Pine Ratio") +
+  xlab("Pine fraction") +
   ylab("Count") + 
-  ggsave(here("Figures/Lassen-Plumas", "Fir_Pine.png"),
+  ggsave(here("Figures/Lassen-Plumas", "Pine_fraction.png"),
          width = 6, height = 4, dpi = 500)  
   
-#Histogram of Fir-Pine ratio by ownership
+#Histogram of Pine fraction by ownership
 #Darker is private, lighter shade is federal
-ggplot(Private_BA, aes(AB_PI)) + 
+ggplot(Private_BA, aes(pine_fraction)) + 
   geom_histogram(color = "black",
                  fill = palette.1) + 
-  geom_histogram(data = Federal_BA, aes(AB_PI),
+  geom_histogram(data = Federal_BA, aes(pine_fraction),
                  color = "black",
                  fill = palette.1,
                  alpha = 0.5,
                  linetype = "dashed") + 
-  xlab("Fir-Pine Ratio") +
+  xlab("Pine fraction") +
   ylab("Count") + 
-  ggsave(here("Figures/Lassen-Plumas", "Fir_Pine_ownership.png"),
+  ggsave(here("Figures/Lassen-Plumas", "Pine_ownership.png"),
          width = 6, height = 4, dpi = 500)
 
-#Density plot of Fir-Pine ratio by ownership
-ggplot(FIA_BA, aes(AB_PI, fill = ownership)) + 
+#Density plot of Pine fraction by ownership
+ggplot(FIA_BA, aes(pine_fraction, fill = ownership)) + 
   geom_density(alpha = 0.5) + 
   scale_fill_manual(values = c("goldenrod2",
                                "dodgerblue3")) + 
-  xlab("Fir-Pine Ratio") +
+  xlab("Pine fraction") +
   coord_cartesian(expand = FALSE) + 
   ylab("Density") +
   theme(legend.title = element_blank()) +
-  ggsave(here("Figures/Lassen-Plumas", "Fir_Pine_density_ownership.png"),
+  ggsave(here("Figures/Lassen-Plumas", "Pine_density_ownership.png"),
          width = 6, height = 4, dpi = 500)
 
 #############################################################################
