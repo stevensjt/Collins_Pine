@@ -487,7 +487,7 @@ h_fia_ba <- #Histogram
                         rep(brewer.pal(9,"RdYlBu")[9],2)
                  ),
                  col="black")+
-  labs(x = "TPH", y = "Count")+
+  labs(x = "Total Live BA", y = "Count")+
   coord_cartesian(xlim = c(0, 100)) +
   theme_bw()+
   theme(plot.title = element_text(hjust = 0.5, size = 9),
@@ -651,7 +651,7 @@ h_fia_pine <- #Histogram
                         rep(brewer.pal(9,"RdYlBu")[9],1)
                  ),
                  col="black")+
-  labs(x = "TPH", y = "Count")+
+  labs(x = "Pine fraction", y = "Count")+
   coord_cartesian(xlim = c(0, 1)) +
   theme_bw()+
   theme(plot.title = element_text(hjust = 0.5, size = 9),
