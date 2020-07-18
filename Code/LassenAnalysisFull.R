@@ -130,61 +130,51 @@ library(PerformanceAnalytics)
 correlation.data <- d %>%
   select(21:30,
          -aspect)
-chart.Correlation(correlation.data, histogram = TRUE, pch = 19)
-#Just going to keep elevation, slope, aspect, mean cwd, and precipitation
-model_parms <- names(d[c("elev_mean", "slope", "aspect", "cwd_mean8110", "ppt_mean8110")])
+chart.Correlation(correlation.data, histogram = TRUE, pch = 19) #Excluding variables >= 0.7
+#Just going to keep max temp, slope, aspect, mean cwd, and precipitation
+model_parms5 <- names(d[c("tmx_mean8110", "slope", "aspect", "cwd_mean8110", "ppt_mean8110")])
 
 ###3a. All trees, density####
 
 #Historical data with RandomForest
 library(randomForest)
-md <- d[complete.cases(d),c("Tot_TPH", model_parms)]
-rfm_tph <- randomForest(Tot_TPH ~ ., data=md, importance = TRUE)
-print(rfm_tph)
-varImpPlot(rfm_tph) #Variable importance plot
 
-#Checking model parameters to see if default settings are okay (# trees and # vars at each node)
-plot(rfm_tph[[5]]) #Looking to see if default number of trees is sufficient to explain variation in data; default is good
-rsq.tph <- vector(length = 5) #Checking to see if number of variables for each node is okay; default is good
-for (i in 1:5) {
-  temp.model <- randomForest(Tot_TPH ~ ., data=md, mtry = i, importance = TRUE)
-  rsq.tph[i] <- temp.model[[5]][500]
-  }
-plot(rsq.tph) #Default # of variables at each node looks good
+#RF with all 5 parameters
+md5 <- d[complete.cases(d),c("Tot_TPH", model_parms5)]
+set.seed(10) #To reproduce bootstrapping
+rfm_tph5 <- randomForest(Tot_TPH ~ ., data=md5, importance = TRUE)
+print(rfm_tph5)
+varImpPlot(rfm_tph5) #Removing aspect
 
-#Historical data with GLM
-#make a function to standardize continuous variables
-standFun <- function(x) 
-{stnd <- (x - mean(x, na.rm = TRUE))/sd(x, na.rm = TRUE)}
+#RF with 4 parameters
+tph_parms4 <- names(d[c("tmx_mean8110", "slope", "cwd_mean8110", "ppt_mean8110")])
+md4 <- d[complete.cases(d),c("Tot_TPH", tph_parms4)]
+set.seed(10) #To reproduce bootstrapping
+rfm_tph4 <- randomForest(Tot_TPH ~ ., data=md4, importance = TRUE)
+print(rfm_tph4)
+varImpPlot(rfm_tph4) #Removing slope
 
-#Standardizing continous variables
-d <- d%>%
-  mutate(s.elev = standFun(elev_mean),
-         s.slope = standFun(slope),
-         s.cwd = standFun(cwd_mean8110),
-         s.ppt = standFun(ppt_mean8110))
+#RF with 3 parameters
+tph_parms3 <- names(d[c("tmx_mean8110", "cwd_mean8110", "ppt_mean8110")])
+md3 <- d[complete.cases(d),c("Tot_TPH", tph_parms3)]
+set.seed(10) #To reproduce bootstrapping
+rfm_tph3 <- randomForest(Tot_TPH ~ ., data=md3, importance = TRUE)
+print(rfm_tph3)
+varImpPlot(rfm_tph3) #Removing cwd
 
-#Indicating which standardized variables to include in GLM
-s_parms <- names(d[c("s.elev", "s.slope", "s.cwd", "s.ppt", "aspect")])
+#RF with 2 parameters
+tph_parms2 <- names(d[c("tmx_mean8110", "ppt_mean8110")])
+md2 <- d[complete.cases(d),c("Tot_TPH", tph_parms2)]
+rfm_tph2 <- randomForest(Tot_TPH ~ ., data=md2, importance = TRUE)
+print(rfm_tph2)
+varImpPlot(rfm_tph2) #Removing ppt
 
-#Gmulti for historical TPH
-m_tph <- glmulti(y="Tot_TPH", 
-                 xr=s_parms,
-                 data=d,
-                 level=1,method="h", plotty = FALSE)
-
-#TPH model results
-lapply(m_tph@objects, function(x) AIC(x)) #First two models within 8 AIC
-lapply(1:2, function(x) summary(m_tph@objects[[x]])) #Going with m_tph@objects[[2]]; less variables
-par(mfrow=c(2,2))
-plot(m_tph@objects[[2]]) #Diagnostic plots; looks acceptable
-dev.off()
-r.squaredGLMM(m_tph@objects[[2]]) #8% var explained; not great
-
-#Comparing Random Forest to GLM
+#Comparing Random Forests
 #Predictions from RandomForest
-d$rf_tph <- predict(rfm_tph, d)
-d$glm_tph <- predict(m_tph@objects[[2]])
+d$tph5 <- predict(rfm_tph5, d)
+d$tph4 <- predict(rfm_tph4, d)
+d$tph3 <- predict(rfm_tph3, d)
+d$tph2 <- predict(rfm_tph2, d)
 
 #Funciton to estimate RMSE
 rmseFun <- function(a, b)
@@ -192,59 +182,52 @@ rmseFun <- function(a, b)
 
 #RMSE of TPH models
 error.summary.tph <- d %>%
-  summarise(rmse.rf = rmseFun(rf_tph, Tot_TPH),
-            rmse.glm = rmseFun(glm_tph, Tot_TPH)) #RMSE is less in Random Forest
-
-#Check predictive power; okay, but not great for either model
-#Based on RMSE and % variance explained, going with Random Forest
-par(mfrow=c(1,2))
-plot(d$Tot_TPH ~ d$rf_tph)
-abline(0,1)
-plot(d$Tot_TPH ~ d$glm_tph)
-abline(0,1)
-dev.off()
+  summarise(rmse5 = rmseFun(tph5, Tot_TPH),
+            rmse4 = rmseFun(tph4, Tot_TPH),
+            rmse3 = rmseFun(tph3, Tot_TPH),
+            rmse2 = rmseFun(tph2, Tot_TPH))
+#Going with tph4 since it has highest %var explained and lowest RMSE
 
 ##CART for historical tph
 h.tph <- #Histogram
   ggplot(d)+
-  geom_histogram(aes(Tot_TPA), binwidth = 5, center = 2.5,
-                 fill=c(rep(brewer.pal(9,"RdYlBu")[1],2),
-                        rep(brewer.pal(9,"RdYlBu")[2],1),
-                        rep(brewer.pal(9,"RdYlBu")[3],1),
-                        rep(brewer.pal(9,"RdYlBu")[5],1),
-                        rep(brewer.pal(9,"RdYlBu")[7],1),
+  geom_histogram(aes(Tot_TPH), binwidth = 5, center = 2.5,
+                 fill=c(rep(brewer.pal(9,"RdYlBu")[1],4),
+                        rep(brewer.pal(9,"RdYlBu")[2],4),
+                        rep(brewer.pal(9,"RdYlBu")[3],4),
+                        rep(brewer.pal(9,"RdYlBu")[5],4),
+                        rep(brewer.pal(9,"RdYlBu")[7],4),
                         rep(brewer.pal(9,"RdYlBu")[9],4)
                  ),
                  col="black")+
   labs(x = "TPH", y = "Count")+
-  coord_cartesian(xlim = c(0, 60)) +
+  coord_cartesian(xlim = c(0, 125)) +
   theme_bw()+
   theme(plot.title = element_text(hjust = 0.5, size = 9),
         axis.text = element_text(size = 8),
         axis.title = element_text(size = 9))
 
-#CART
-tph.cart <- rpart(Tot_TPH ~ elev_mean + 
-                slope +
-                cwd_mean8110 + 
-              ppt_mean8110 + 
-              aspect, 
+#CART using same variables as tph4
+tph.cart <- rpart(Tot_TPH ~ tmx_mean8110 +
+                    ppt_mean8110 + 
+                    cwd_mean8110 + 
+                    slope,
         method = "anova",
         data = d,
         control = rpart.control(cp = 0.02))
 
 #Relabeling variables for CART plot
-levels(tph.cart$frame$var) <- c("<leaf>", "CWD", "elevation", "precipitation")
+levels(tph.cart$frame$var) <- c("<leaf>", "CWD", "precipitation", "max temperature")
   
 #CART plot of historical TPH and inset of tph histogram
 #Saved ("Figures/Lassen-Plumas/QQ_tph_cart.png)
 prp(tph.cart, varlen = 0, faclen = 0, type = 3, extra = 1, cex = 0.6, 
-    box.palette =  c("#abd9e9", "#74add1", "#4575b4"),
+    box.palette =  c("#f46d43", "#f46d43", "#fdae61"),
     #values match tree$frame[,"yval"]
     clip.right.labs = FALSE, #Only applies if using type = 3
     mar = c(2,2,2,2), 
-    main = "Historical (1924) tree density \n(TPH ~ elevation, slope, aspect, CWD, precipitation)")
-print(h.tph, vp=viewport(.24, .18, .4, .3))
+    main = "Historical (1924) tree density \n(TPH ~ max temperature, precipitation, CWD, slope)")
+print(h.tph, vp=viewport(.20, .15, .4, .3))
 print(grid.text("a", x=unit(1, "npc"), y= unit (1, "npc"), 
                 vp=viewport(.01, .9, .1, .1) ) )
 #dev.off
@@ -264,32 +247,43 @@ d_fia <- read.csv("Data/Derived/d_fia.csv") %>%
 {
   tree_fia <- tph.cart
   tree_fia$frame[which(tree_fia$frame$var == "<leaf>")[1], "n" ] <- #Get modern sample size
-    length(which(!is.na(d_fia[d_fia$elev_mean >= 1702, "Tot_TPH"])))
+    length(which(!is.na(d_fia[d_fia$tmx_mean8110 < 15, "Tot_TPH"])))
   tree_fia$frame[which(tree_fia$frame$var == "<leaf>")[1], "yval" ] <- #Get modern mean
-    mean(d_fia[d_fia$elev_mean >= 1792, "Tot_TPH"], na.rm = T)
+    mean(d_fia[d_fia$tmx_mean8110 < 15, "Tot_TPH"], na.rm = T)
   tree_fia$frame[which(tree_fia$frame$var == "<leaf>")[2], "n" ] <- #Get modern sample size
-    length(which(!is.na(d_fia[d_fia$elev_mean < 1702 &
+    length(which(!is.na(d_fia[d_fia$tmx_mean8110 < 15 & 
                                 d_fia$ppt_mean8110 < 1020, "Tot_TPH"])))
   tree_fia$frame[which(tree_fia$frame$var == "<leaf>")[2], "yval" ] <- #Get modern mean
-    mean(d_fia[d_fia$elev_mean < 1702 &
+    mean(d_fia[d_fia$tmx_mean8110 < 15 &
                  d_fia$ppt_mean8110 < 1020, "Tot_TPH"], na.rm = T)
   tree_fia$frame[which(tree_fia$frame$var == "<leaf>")[3], "n" ] <- #Get modern sample size
-    length(which(!is.na(d_fia[d_fia$elev_mean < 1702 &
+    length(which(!is.na(d_fia[d_fia$tmx_mean8110 < 15 & 
                                 d_fia$ppt_mean8110 >= 1020 & 
-                                d_fia$cwd_mean8110 < 517, "Tot_TPH"])))
+                                d_fia$cwd_mean8110 < 440, "Tot_TPH"])))
   tree_fia$frame[which(tree_fia$frame$var == "<leaf>")[3], "yval" ] <- #Get modern mean
-    mean(d_fia[d_fia$elev_mean < 1702 &
-                 d_fia$ppt_mean8110 >= 1020 & 
-                 d_fia$cwd_mean8110 < 517, "Tot_TPH"], na.rm = T)
+    mean(d_fia[d_fia$tmx_mean8110 < 15 &
+                 d_fia$ppt_mean8110 >= 1020 &
+                 d_fia$cwd_mean8110 < 440, "Tot_TPH"], na.rm = T)
   tree_fia$frame[which(tree_fia$frame$var == "<leaf>")[4], "n" ] <- #Get modern sample size
-    length(which(!is.na(d_fia[d_fia$elev_mean < 1702 &
+    length(which(!is.na(d_fia[d_fia$tmx_mean8110 < 15 & 
                                 d_fia$ppt_mean8110 >= 1020 & 
-                                d_fia$cwd_mean8110 >= 517, "Tot_TPH"])))
+                                d_fia$cwd_mean8110 >= 440 & 
+                                d_fia$ppt_mean8110 >= 1179, "Tot_TPH"])))
   tree_fia$frame[which(tree_fia$frame$var == "<leaf>")[4], "yval" ] <- #Get modern mean
-    mean(d_fia[d_fia$elev_mean < 1702 &
-                 d_fia$ppt_mean8110 >= 1020 & 
-                 d_fia$cwd_mean8110 >= 517, "Tot_TPH"], na.rm = T)
-
+    mean(d_fia[d_fia$tmx_mean8110 < 15 &
+                 d_fia$ppt_mean8110 >= 1020 &
+                 d_fia$cwd_mean8110 >= 440 &
+                 d_fia$ppt_mean8110 >= 1179, "Tot_TPH"], na.rm = T)
+  tree_fia$frame[which(tree_fia$frame$var == "<leaf>")[5], "n" ] <- #Get modern sample size
+    length(which(!is.na(d_fia[d_fia$tmx_mean8110 < 15 & 
+                                d_fia$ppt_mean8110 >= 1020 & 
+                                d_fia$cwd_mean8110 >= 440 & 
+                                d_fia$ppt_mean8110 < 1179, "Tot_TPH"])))
+  tree_fia$frame[which(tree_fia$frame$var == "<leaf>")[5], "yval" ] <- #Get modern mean
+    mean(d_fia[d_fia$tmx_mean8110 < 15 &
+                 d_fia$ppt_mean8110 >= 1020 &
+                 d_fia$cwd_mean8110 >= 440 &
+                 d_fia$ppt_mean8110 < 1179, "Tot_TPH"], na.rm = T)
 }
 
 h_fia_tph <- #Histogram
@@ -314,12 +308,12 @@ h_fia_tph <- #Histogram
 #CART plot of FIA TPH and inset of tph histogram
 #Saved ("Figures/Lassen-Plumas/FIA_tph_cart.png)
 prp(tree_fia, varlen = 0, faclen = 0, type = 3, extra = 1, cex = 0.6,
-    box.palette =  c("#f46d43", "#fdae61"),
+    box.palette =  c("#fdae61", "#f46d43", "#fdae61"),
     #values match tree$frame[,"yval"]
     clip.right.labs = FALSE, #Only applies if using type = 3
     mar = c(2,2,2,2), 
-    main = "Modern (2011 - 2018) tree density \n(TPH ~ elevation, slope, aspect, CWD, precipitation)")
-print(h_fia_tph, vp=viewport(.24, .18, .4, .3))
+    main = "Modern (2011 - 2018) tree density \n(TPH ~ max temperature, precipitation, cWD, slope)")
+print(h_fia_tph, vp=viewport(.2, .15, .4, .3))
 print(grid.text("b", x=unit(1, "npc"), y= unit (1, "npc"), 
                 vp=viewport(.01, .9, .1, .1) ) )
 #dev.off()
@@ -327,50 +321,51 @@ print(grid.text("b", x=unit(1, "npc"), y= unit (1, "npc"),
 ####3b. Basal Area####
 
 #Historical data with RandomForest
-bad <- d[complete.cases(d),c("TotLvBA_met", model_parms)]
-rfm_ba <- randomForest(TotLvBA_met ~ ., data=bad, importance = TRUE)
-print(rfm_ba)
-varImpPlot(rfm_ba) #Variable importance plot
-plot(rfm_ba[[5]]) #Looking to see if default number of trees is sufficient to explain variation in data; default is good
-rsq.ba <- vector(length = 5) #Checking to see if number of variables for each node is okay; default is good
-for (i in 1:5) {
-  temp.model <- randomForest(TotLvBA_met ~ ., data=bad, mtry = i, importance = TRUE)
-  rsq.ba[i] <- temp.model[[5]][500]
-}
-plot(rsq.ba)
+#RF with all 5 parameters
+bd5 <- d[complete.cases(d),c("TotLvBA_met", model_parms5)]
+set.seed(10) #To reproduce bootstrapping
+rfm_ba5 <- randomForest(TotLvBA_met ~ ., data=bd5, importance = TRUE)
+print(rfm_ba5)
+varImpPlot(rfm_ba5) #Removing aspect
 
-#Gmulti for historical Live BA
-m_ba <- glmulti(y="TotLvBA_met", 
-                 xr=s_parms,
-                 data=d,
-                 level=1,method="h", plotty = FALSE)
+#RF with 4 parameters
+ba_parms4 <- names(d[c("tmx_mean8110", "slope", "cwd_mean8110", "ppt_mean8110")])
+bd4 <- d[complete.cases(d),c("TotLvBA_met", ba_parms4)]
+set.seed(10) #To reproduce bootstrapping
+rfm_ba4 <- randomForest(TotLvBA_met ~ ., data=bd4, importance = TRUE)
+print(rfm_ba4)
+varImpPlot(rfm_ba4) #Removing slope
 
-#Live BA model results
-lapply(m_ba@objects, function(x) AIC(x)) #First four models within 8 AIC
-lapply(1:4, function(x) summary(m_ba@objects[[x]])) #Going with m_ba@objects[[1]]; less variables
-par(mfrow=c(2,2))
-plot(m_ba@objects[[1]]) #Diagnostic plots; looks acceptable
-dev.off()
-r.squaredGLMM(m_ba@objects[[1]]) #6% var explained; not great
+#RF with 3 parameters
+ba_parms3 <- names(d[c("tmx_mean8110", "cwd_mean8110", "ppt_mean8110")])
+bd3 <- d[complete.cases(d),c("TotLvBA_met", ba_parms3)]
+set.seed(10) #To reproduce bootstrapping
+rfm_ba3 <- randomForest(TotLvBA_met ~ ., data=bd3, importance = TRUE)
+print(rfm_ba3)
+varImpPlot(rfm_ba3) #Removing cwd
 
-#Comparing Random Forest to GLM
+#RF with 2 parameters
+ba_parms2 <- names(d[c("tmx_mean8110", "ppt_mean8110")])
+bd2 <- d[complete.cases(d),c("TotLvBA_met", ba_parms2)]
+set.seed(10) #To reproduce bootstrapping
+rfm_ba2 <- randomForest(TotLvBA_met ~ ., data=bd2, importance = TRUE)
+print(rfm_ba2)
+varImpPlot(rfm_ba2)
+
+#Comparing Random Forests
 #Predictions from RandomForest
-d$rf_ba <- predict(rfm_ba, d)
-d$glm_ba <- predict(m_ba@objects[[1]], d)
+d$ba5 <- predict(rfm_ba5, d)
+d$ba4 <- predict(rfm_ba4, d)
+d$ba3 <- predict(rfm_ba3, d)
+d$ba2 <- predict(rfm_ba2, d)
 
-#RMSE of Live BA models
+#RMSE of BA models
 error.summary.ba <- d %>%
-  summarise(rmse.rf = rmseFun(rf_ba, TotLvBA_met),
-            rmse.glm = rmseFun(glm_ba, TotLvBA_met)) #RMSE is less in Random Forest
-
-#Check predictive power; okay, but not great for either model
-#Based on RMSE and % variance explained, going with Random Forest
-par(mfrow=c(1,2))
-plot(d$TotLvBA_met ~ d$rf_ba)
-abline(0,1)
-plot(d$TotLvBA_met ~ d$glm_ba)
-abline(0,1)
-dev.off()
+  summarise(rmse5 = rmseFun(ba5, TotLvBA_met),
+            rmse4 = rmseFun(ba4, TotLvBA_met),
+            rmse3 = rmseFun(ba3, TotLvBA_met),
+            rmse2 = rmseFun(ba2, TotLvBA_met))
+#Going with ba4 since it has highest %var explained and lowest RMSE
 
 ##CART for historical Live BA
 h.ba <- #Histogram
@@ -392,27 +387,26 @@ h.ba <- #Histogram
         axis.title = element_text(size = 9))
 
 #CART
-ba.cart <- rpart(TotLvBA_met ~ elev_mean + 
-                    slope +
-                    cwd_mean8110 + 
-                    ppt_mean8110 + 
-                    aspect, 
+ba.cart <- rpart(TotLvBA_met ~ tmx_mean8110 + 
+                   ppt_mean8110 +
+                   cwd_mean8110 + 
+                   slope, 
                   method = "anova",
                   data = d,
                   control = rpart.control(cp = 0.02))
 
 #Relabeling variables for CART plot
-levels(ba.cart$frame$var) <- c("<leaf>", "CWD", "elevation", "precipitation")
+levels(ba.cart$frame$var) <- c("<leaf>", "CWD", "max temperature")
 
 #CART plot of historical live BA
 #Saved ("Figures/Lassen-Plumas/QQ_ba_cart.png)
 prp(ba.cart, varlen = 0, faclen = 0, type = 3, extra = 1, cex = 0.6, 
-    box.palette =  c("#f46d43", "#fdae61", "#fdae61"),
+    box.palette =  c("#f46d43", "#fdae61"),
     #values match tree$frame[,"yval"]
     clip.right.labs = FALSE, #Only applies if using type = 3
     mar = c(2,2,2,2), 
-    main = "Historical (1924) live basal area \n(Live BA ~ elevation, slope, aspect, CWD, precipitation)")
-print(h.ba, vp=viewport(.74, .70, .4, .3))
+    main = "Historical (1924) live basal area \n(Live BA ~ max temperature, precipitation, CWD, slope)")
+print(h.ba, vp=viewport(.8, .75, .4, .3))
 print(grid.text("a", x=unit(1, "npc"), y= unit (1, "npc"), 
                 vp=viewport(.01, .9, .1, .1) ))#dev.off()
 
@@ -420,56 +414,21 @@ print(grid.text("a", x=unit(1, "npc"), y= unit (1, "npc"),
 {
   tree_fia <- ba.cart
   tree_fia$frame[which(tree_fia$frame$var == "<leaf>")[1], "n" ] <- #Get modern sample size
-    length(which(!is.na(d_fia[d_fia$elev_mean >= 1661, "TotLvBA_met"])))
+    length(which(!is.na(d_fia[d_fia$tmx_mean8110 < 15, "TotLvBA_met"])))
   tree_fia$frame[which(tree_fia$frame$var == "<leaf>")[1], "yval" ] <- #Get modern mean
-    mean(d_fia[d_fia$elev_mean >= 1661, "TotLvBA_met"], na.rm = T)
+    mean(d_fia[d_fia$tmx_mean8110 < 15, "TotLvBA_met"], na.rm = T)
   tree_fia$frame[which(tree_fia$frame$var == "<leaf>")[2], "n" ] <- #Get modern sample size
-    length(which(!is.na(d_fia[d_fia$elev_mean < 1661 &
-                                d_fia$cwd_mean8110 < 434, "TotLvBA_met"])))
+    length(which(!is.na(d_fia[d_fia$tmx_mean8110 >= 15 & 
+                                d_fia$cwd_mean8110 < 449, "TotLvBA_met"])))
   tree_fia$frame[which(tree_fia$frame$var == "<leaf>")[2], "yval" ] <- #Get modern mean
-    mean(d_fia[d_fia$elev_mean < 1661 &
-                 d_fia$cwd_mean8110 < 434, "TotLvBA_met"], na.rm = T)
+    mean(d_fia[d_fia$tmx_mean8110 >= 15 & 
+                 d_fia$cwd_mean8110 < 449, "TotLvBA_met"], na.rm = T)
   tree_fia$frame[which(tree_fia$frame$var == "<leaf>")[3], "n" ] <- #Get modern sample size
-    length(which(!is.na(d_fia[d_fia$elev_mean < 1661 &
-                                d_fia$cwd_mean8110 >= 434 & 
-                                d_fia$ppt_mean8110 < 1015 & 
-                                d_fia$elev_mean >= 1473, "TotLvBA_met"])))
+    length(which(!is.na(d_fia[d_fia$tmx_mean8110 >= 15 & 
+                                d_fia$cwd_mean8110 >= 449, "TotLvBA_met"])))
   tree_fia$frame[which(tree_fia$frame$var == "<leaf>")[3], "yval" ] <- #Get modern mean
-    mean(d_fia[d_fia$elev_mean < 1661 &
-                 d_fia$cwd_mean8110 >= 434 & 
-                 d_fia$ppt_mean8110 < 1015 & 
-                 d_fia$elev_mean >= 1473, "TotLvBA_met"], na.rm = T)
-  tree_fia$frame[which(tree_fia$frame$var == "<leaf>")[4], "n" ] <- #Get modern sample size
-    length(which(!is.na(d_fia[d_fia$elev_mean < 1661 &
-                                d_fia$cwd_mean8110 >= 434 & 
-                                d_fia$ppt_mean8110 < 1015 & 
-                                d_fia$elev_mean < 1473, "TotLvBA_met"])))
-  tree_fia$frame[which(tree_fia$frame$var == "<leaf>")[4], "yval" ] <- #Get modern mean
-    mean(d_fia[d_fia$elev_mean < 1661 &
-                 d_fia$cwd_mean8110 >= 434 & 
-                 d_fia$ppt_mean8110 < 1015 & 
-                 d_fia$elev_mean < 1473, "TotLvBA_met"], na.rm = T)
-  tree_fia$frame[which(tree_fia$frame$var == "<leaf>")[5], "n" ] <- #Get modern sample size
-    length(which(!is.na(d_fia[d_fia$elev_mean < 1661 &
-                                d_fia$cwd_mean8110 >= 434 & 
-                                d_fia$ppt_mean8110 >= 1015 & 
-                                d_fia$ppt_mean8110 >= 1174, "TotLvBA_met"])))
-  tree_fia$frame[which(tree_fia$frame$var == "<leaf>")[5], "yval" ] <- #Get modern mean
-    mean(d_fia[d_fia$elev_mean < 1661 &
-                 d_fia$cwd_mean8110 >= 434 & 
-                 d_fia$ppt_mean8110 >= 1015 & 
-                 d_fia$ppt_mean8110 >= 1174, "TotLvBA_met"], na.rm = T)
-  tree_fia$frame[which(tree_fia$frame$var == "<leaf>")[6], "n" ] <- #Get modern sample size
-    length(which(!is.na(d_fia[d_fia$elev_mean < 1661 &
-                                d_fia$cwd_mean8110 >= 434 & 
-                                d_fia$ppt_mean8110 >= 1015 & 
-                                d_fia$ppt_mean8110 < 1174, "TotLvBA_met"])))
-  tree_fia$frame[which(tree_fia$frame$var == "<leaf>")[6], "yval" ] <- #Get modern mean
-    mean(d_fia[d_fia$elev_mean < 1661 &
-                 d_fia$cwd_mean8110 >= 434 & 
-                 d_fia$ppt_mean8110 >= 1015 & 
-                 d_fia$ppt_mean8110 < 1174, "TotLvBA_met"], na.rm = T)
-  
+    mean(d_fia[d_fia$tmx_mean8110 >= 15 & 
+                 d_fia$cwd_mean8110 >= 449, "TotLvBA_met"], na.rm = T)
 }
 
 #No trees match criteria for leaf 2 (elev < 1661 & CWD < 434); chaning NAN to 0
@@ -497,12 +456,12 @@ h_fia_ba <- #Histogram
 #CART plot of FIA live BA with inset of histogram
 #Saved ("Figures/Lassen-Plumas/FIA_ba_cart.png)
 prp(tree_fia, varlen = 0, faclen = 0, type = 3, extra = 1, cex = 0.6,
-    box.palette =  c("white", "#d73027", "#d73027", "#fdae61"),
+    box.palette =  c("white", "#f46d43", "#f46d43", "#fdae61"),
     #values match tree$frame[,"yval"]
     clip.right.labs = FALSE, #Only applies if using type = 3
     mar = c(2,2,2,2), 
-    main = "Modern (2011 - 2018) live basal area \n(Live BA ~ elevation, slope, aspect, CWD, precipitation)")
-print(h_fia_ba, vp=viewport(.74, .70, .4, .3))
+    main = "Modern (2011 - 2018) live basal area \n(Live BA ~ max temperature, precipitation, CWD, slope)")
+print(h_fia_ba, vp=viewport(.8, .75, .4, .3))
 print(grid.text("b", x=unit(1, "npc"), y= unit (1, "npc"), 
                 vp=viewport(.01, .9, .1, .1) ))
 #dev.off()
@@ -510,50 +469,51 @@ print(grid.text("b", x=unit(1, "npc"), y= unit (1, "npc"),
 ####3c. Pine Fraction####
 
 #Historical data with RandomForest
-pined <- d[complete.cases(d),c("pine_fraction", model_parms)]
-rfm_pine <- randomForest(pine_fraction ~ ., data=pined, importance = TRUE)
-print(rfm_pine)
-varImpPlot(rfm_pine) #Variable importance plot
-plot(rfm_pine[[5]]) #Looking to see if default number of trees is sufficient to explain variation in data; default is good
-rsq.pine <- vector(length = 5) #Checking to see if number of variables for each node is okay; default is good
-for (i in 1:5) {
-  temp.model <- randomForest(pine_fraction ~ ., data=pined, mtry = i, importance = TRUE)
-  rsq.pine[i] <- temp.model[[5]][500]
-}
-plot(rsq.pine)
+#RF with all 5 parameters
+pined <- d[complete.cases(d),c("pine_fraction", model_parms5)]
+set.seed(10) #Reproduce bootstrapping 
+rfm_pine5 <- randomForest(pine_fraction ~ ., data=pined, importance = TRUE)
+print(rfm_pine5)
+varImpPlot(rfm_pine5) #Removing aspect
 
-#Gmulti for historical pine fraction
-m_pine <- glmulti(y="pine_fraction", 
-                xr=s_parms,
-                data=d,
-                level=1,method="h", plotty = FALSE)
+#RF with 4 parameters
+pine_parms4 <- names(d[c("tmx_mean8110", "slope", "cwd_mean8110", "ppt_mean8110")])
+pined4 <- d[complete.cases(d),c("pine_fraction", pine_parms4)]
+set.seed(10) #Reproduce bootstrapping 
+rfm_pine4 <- randomForest(pine_fraction ~ ., data=pined4, importance = TRUE)
+print(rfm_pine4)
+varImpPlot(rfm_pine4) #Removing slope
 
-#Pine fraction model results
-lapply(m_pine@objects, function(x) AIC(x)) #First two models within 8 AIC
-lapply(1:2, function(x) summary(m_pine@objects[[x]])) #Going with m_pine@objects[[1]]
-par(mfrow=c(2,2))
-plot(m_pine@objects[[1]]) #Diagnostic plots; looks acceptable
-dev.off()
-r.squaredGLMM(m_pine@objects[[1]]) #22% var explained; better than other metrics
+#RF with 3 parameters
+pine_parms3 <- names(d[c("tmx_mean8110", "cwd_mean8110", "ppt_mean8110")])
+pined3 <- d[complete.cases(d),c("pine_fraction", pine_parms3)]
+set.seed(10) #Reproduce bootstrapping 
+rfm_pine3 <- randomForest(pine_fraction ~ ., data=pined3, importance = TRUE)
+print(rfm_pine3)
+varImpPlot(rfm_pine3) #Removing cwd
 
-#Comparing Random Forest to GLM
+#RF with 2 parameters
+pine_parms2 <- names(d[c("tmx_mean8110", "ppt_mean8110")])
+pined2 <- d[complete.cases(d),c("pine_fraction", pine_parms2)]
+set.seed(10) #Reproduce bootstrapping 
+rfm_pine2 <- randomForest(pine_fraction ~ ., data=pined2, importance = TRUE)
+print(rfm_pine2)
+varImpPlot(rfm_pine2) #Removing cwd
+
+#Comparing Random Forests
 #Predictions from RandomForest
-d$rf_pine <- predict(rfm_pine, d)
-d$glm_pine <- predict(m_pine@objects[[1]], d)
+d$pine5 <- predict(rfm_pine5, d)
+d$pine4 <- predict(rfm_pine4, d)
+d$pine3 <- predict(rfm_pine3, d)
+d$pine2 <- predict(rfm_pine2, d)
 
-#RMSE of pine fraction models
+#RMSE of BA models
 error.summary.pine <- d %>%
-  summarise(rmse.rf = rmseFun(rf_pine, pine_fraction),
-            rmse.glm = rmseFun(glm_pine, pine_fraction)) #RMSE is less in Random Forest
-
-#Check predictive power; okay, but not great for either model
-#Based on RMSE and % variance explained, going with Random Forest
-par(mfrow=c(1,2))
-plot(d$pine_fraction ~ d$rf_pine)
-abline(0,1)
-plot(d$pine_fraction ~ d$glm_pine)
-abline(0,1)
-dev.off()
+  summarise(rmse5 = rmseFun(pine5, pine_fraction),
+            rmse4 = rmseFun(pine4, pine_fraction),
+            rmse3 = rmseFun(pine3, pine_fraction),
+            rmse2 = rmseFun(pine2, pine_fraction))
+#Going with pine4 since it has highest %var explained and lowest RMSE
 
 ##CART for historicalpine fraction
 h.pine <- #Histogram
@@ -575,17 +535,16 @@ h.pine <- #Histogram
         axis.title = element_text(size = 9))
 
 #CART
-pine.cart <- rpart(pine_fraction ~ elev_mean + 
-                   slope +
-                   cwd_mean8110 + 
-                   ppt_mean8110 + 
-                   aspect, 
-                 method = "anova",
-                 data = d,
-                 control = rpart.control(cp = 0.02))
+pine.cart <- rpart(pine_fraction ~ tmx_mean8110 + 
+                     ppt_mean8110 +  
+                     cwd_mean8110 + 
+                     slope, 
+                   method = "anova",
+                   data = d,
+                   control = rpart.control(cp = 0.02))
 
 #Relabeling variables for CART plot
-levels(pine.cart$frame$var) <- c("<leaf>", "CWD", "elevation", "precipitation", "slope")
+levels(pine.cart$frame$var) <- c("<leaf>", "CWD", "precipitation", "slope", "max temperature")
 
 #CART plot of historical pine fraction
 #Saved ("Figures/Lassen-Plumas/QQ_pine_cart.png)
@@ -594,7 +553,7 @@ prp(pine.cart, varlen = 0, faclen = 0, type = 3, extra = 1, cex = 0.6,
     #values match tree$frame[,"yval"]
     clip.right.labs = FALSE, #Only applies if using type = 3
     mar = c(2,2,2,2), 
-    main = "Historical (1924) pine fraction \n(Pine fraction ~ elevation, slope, aspect, CWD, precipitation)")
+    main = "Historical (1924) pine fraction \n(Pine fraction ~ max temperature, precipitation, CWD, slope)")
 print(h.pine, vp=viewport(.72, .2, .3, .3))
 print(grid.text("a", x=unit(1, "npc"), y= unit (1, "npc"), 
                 vp=viewport(.01, .9, .1, .1) ))
@@ -617,26 +576,26 @@ print(grid.text("a", x=unit(1, "npc"), y= unit (1, "npc"),
                  d_fia$ppt_mean8110 < 1497, "pine_fraction"], na.rm = T)
   tree_fia$frame[which(tree_fia$frame$var == "<leaf>")[3], "n" ] <- #Get modern sample size
     length(which(!is.na(d_fia[d_fia$slope >= 10 & 
-                                d_fia$elev_mean < 1558, "pine_fraction"])))
+                                d_fia$tmx_mean8110 >= 15, "pine_fraction"])))
   tree_fia$frame[which(tree_fia$frame$var == "<leaf>")[3], "yval" ] <- #Get modern mean
-    mean(d_fia[d_fia$slope >= 10 & 
-                 d_fia$elev_mean < 1558, "pine_fraction"], na.rm = T)
+    mean(d_fia[d_fia$slope < 10 & 
+                 d_fia$tmx_mean8110 >= 15, "pine_fraction"], na.rm = T)
   tree_fia$frame[which(tree_fia$frame$var == "<leaf>")[4], "n" ] <- #Get modern sample size
     length(which(!is.na(d_fia[d_fia$slope >= 10 & 
-                                d_fia$elev_mean >= 1558 & 
-                                d_fia$cwd_mean8110 < 491, "pine_fraction"])))
+                                d_fia$tmx_mean8110 < 15 & 
+                                d_fia$cwd_mean8110 < 476, "pine_fraction"])))
   tree_fia$frame[which(tree_fia$frame$var == "<leaf>")[4], "yval" ] <- #Get modern mean
-    mean(d_fia[d_fia$slope >= 10 & 
-                 d_fia$elev_mean >= 1558 & 
-                 d_fia$cwd_mean8110 < 491, "pine_fraction"], na.rm = T)
+    mean(d_fia[d_fia$slope < 10 & 
+                 d_fia$tmx_mean8110 < 15 & 
+                 d_fia$cwd_mean8110 < 476, "pine_fraction"], na.rm = T)
   tree_fia$frame[which(tree_fia$frame$var == "<leaf>")[5], "n" ] <- #Get modern sample size
     length(which(!is.na(d_fia[d_fia$slope >= 10 & 
-                                d_fia$elev_mean >= 1558 & 
-                                d_fia$cwd_mean8110 >= 491, "pine_fraction"])))
+                                d_fia$tmx_mean8110 < 15 & 
+                                d_fia$cwd_mean8110 >= 476, "pine_fraction"])))
   tree_fia$frame[which(tree_fia$frame$var == "<leaf>")[5], "yval" ] <- #Get modern mean
-    mean(d_fia[d_fia$slope >= 10 & 
-                 d_fia$elev_mean >= 1558 & 
-                 d_fia$cwd_mean8110 >= 491, "pine_fraction"], na.rm = T)
+    mean(d_fia[d_fia$slope < 10 & 
+                 d_fia$tmx_mean8110 < 15 & 
+                 d_fia$cwd_mean8110 >= 476, "pine_fraction"], na.rm = T)
 }
 
 h_fia_pine <- #Histogram
@@ -661,11 +620,11 @@ h_fia_pine <- #Histogram
 #CART plot of FIA TPH and inset of histogram
 #Saved ("Figures/Lassen-Plumas/FIA_pine_cart.png)
 prp(tree_fia, varlen = 0, faclen = 0, type = 3, extra = 1, cex = 0.6,
-    box.palette =  c("#f46d43", "#fdae61", "#f46d43"),
+    box.palette =  c("#d73027", "#f46d43", "#fdae61", "#fdae61", "#f46d43", "#f46d43"),
     #values match tree$frame[,"yval"]
     clip.right.labs = FALSE, #Only applies if using type = 3
     mar = c(2,2,2,2), 
-    main = "Modern (2011 - 2018) pine fraction \n(Pine fraction ~ elevation, slope, aspect, CWD, precipitation)")
+    main = "Modern (2011 - 2018) pine fraction \n(Pine fraction ~ max temperature, precipitation, CWD, slope)")
 print(h_fia_pine, vp=viewport(.72, .2, .3, .3))
 print(grid.text("b", x=unit(1, "npc"), y= unit (1, "npc"), 
                 vp=viewport(.01, .9, .1, .1) ))
@@ -685,8 +644,8 @@ slp <- raster(paste0(gis_path,"/Aligned/slope_aligned.tif"))
 tmx <- raster(paste0(gis_path,"/Aligned/tmx_aligned.tif"))
 
   
-#Combining raster map values
-s <- stack(dem,slp,asp,cwd,ppt)
+#Combining raster map values of variables use in RF
+s <- stack(tmx,slp,cwd,ppt)
 df <- as.data.frame(getValues(s))
 df[df<0] <- NA
 r <- 1
@@ -696,17 +655,15 @@ for(r in 1:nrow(df)){
   }
 }
 names_tmp <- names(df)
-names(df) <- c("elev_mean", "slope", "aspect", "cwd_mean8110", "ppt_mean8110")
-df$aspect_cat <- ifelse(between(df$aspect, 135,315),"SW","NE")
-df$aspect <- factor(df$aspect_cat)
+names(df) <- c("tmx_mean8110", "slope", "cwd_mean8110", "ppt_mean8110")
 
-#Predictions using Random Forest
-df$pred_tph <- predict(rfm_tph, df)
-df$pred_ba <- predict(rfm_ba, df)
-df$pred_pine <- predict(rfm_pine, df)
+#Predictions using Random Forest models we chose for CART
+df$pred_tph <- predict(rfm_tph4, df)
+df$pred_ba <- predict(rfm_ba4, df)
+df$pred_pine <- predict(rfm_pine4, df)
 
 #Exclude areas not within the climate envelope of the historical data
-df[which(!between(df$elev_mean,range(d$elev_mean)[1],range(d$elev_mean)[2])), ] <-
+df[which(!between(df$tmx_mean8110,range(d$tmx_mean8110)[1],range(d$tmx_mean8110)[2])), ] <-
   NA
 df[which(!between(df$slope,range(d$slope)[1],range(d$slope)[2])), ] <-
   NA
@@ -733,7 +690,45 @@ writeRaster(pred_ba, "GIS/BA_Predicted_rfm.tif", overwrite = TRUE)
 pred_pine <- setValues(x = pred_Align, values = df$pred_pine)
 range(getValues(pred_pine), na.rm = T); range(df$pred_pine, na.rm = T)
 plot(pred_pine)
-writeRaster(pred_pine, "GIS/Pine_Predicted_rfm.tif", overwrite = TRUE)
+writeRaster(pred_pine, "GIS-Pine_Predicted_rfm.tif", overwrite = TRUE)
 
+#Looking at relationship between tph and pine_fraction
+tph.pine <- lm(pred_tph ~ pred_pine,
+               data = df)
+
+df$pred_tph_pine <- predict(tph.pine, df)
+
+ggplot(df, aes(pred_pine, pred_tph)) + 
+  geom_point() + 
+  geom_smooth(aes(pred_pine, pred_tph_pine), 
+              method = "lm",
+              se = FALSE) + 
+  theme_bw()+
+  labs(x = "Predicted pine fraction", y = "Predicted TPH")+
+  theme(plot.title = element_text(hjust = 0.5, size = 14),
+        axis.text = element_text(size = 8),
+        axis.title = element_text(size = 9)) + 
+  ggsave("Figures/Lassen-Plumas/tph_pine.png",
+         width = 7, height = 7)
+
+#Creating graphs comparing RF model performance
+rf.outputs <- read_xlsx("Data/Derived/rf_performance_metrics.xlsx") %>%
+  gather(., "metric", "value", 3:4)
+
+# New facet label for performance metrics
+metrics.labs <- c("Variation explained (%)", "RMSE")
+names(metrics.labs) <- c("perc.var", "rmse")
+
+ggplot(rf.outputs, aes(num.parameters, value, color = y.var)) + 
+  geom_line() + 
+  facet_grid(metric~.,
+             scales = "free",
+             labeller = labeller(metric = metrics.labs)) + 
+  theme_bw() + 
+  theme(legend.position = "bottom",
+        legend.title = element_blank()) + 
+  labs(x = "number of parameters", y = "") + 
+  ggsave("Figures/Lassen-Plumas/RF_comparisons.png",
+         width = 7, height = 4)
 
   
