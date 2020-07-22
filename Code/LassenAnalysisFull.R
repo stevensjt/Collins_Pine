@@ -107,22 +107,40 @@ names(env.d)[which(names(env.d)=="aspect_cat")] <- "aspect"
 env.d$aspect <- factor(env.d$aspect)
 d <- merge.data.frame(d,env.d,by.x = "LotCodeFull", by.y = "id")
 
+d <- #Remove 30 rows that are missing climate data because they're under Lake Almanor
+  d[-which(!complete.cases(d)),]
+
+#To make comparisons with FIA data, removing plots with < 9 Total live BA
+d <- d%>%
+  filter(TotLvBA_met > 9)
+
+#Summary of historical data
 d_summary <- 
   d %>%
-  summarise(Tot_TPA = mean(Tot_TPA, na.rm = T),
-            Tot_TPH = mean(Tot_TPH, na.rm = T),
-            BA_Tot = mean(TotLvBA_ac),
+  summarise(mean_TPH = mean(Tot_TPH),
+            min_TPH = min(Tot_TPH),
+            max_TPH = max(Tot_TPH),
             BAmet_Tot = mean(TotLvBA_met),
+            BAmet_min = min(TotLvBA_met),
+            BAmet_max = max(TotLvBA_met),
             Mean_pine_fraction = mean(pine_fraction),
+            min_pine = min(pine_fraction),
+            max_pine = max(pine_fraction),
             Mean_elev = mean(elev_mean),
             Min_elev = round(min(elev_mean),0),
             Max_elev = round(max(elev_mean),0),
             Mean_precip = mean(ppt_mean8110),
-            Mean_temp = mean(tmx_mean8110)
-  )
-
-d <- #Remove 30 rows that are missing climate data because they're under Lake Almanor
-  d[-which(!complete.cases(d)),]
+            min_precip = min(ppt_mean8110),
+            max_precip = max(ppt_mean8110),
+            Mean_temp = mean(tmx_mean8110),
+            min_tmx = min(tmx_mean8110),
+            max_tmx = max(tmx_mean8110),
+            mean_cwd = mean(cwd_mean8110),
+            min_cwd = min(cwd_mean8110),
+            max_cwd = max(cwd_mean8110),
+            mean_slope = mean(slope),
+            min_slope = min(slope),
+            max_slope = max(slope))
 
 ####3. Analysis####
 #Checking correlations amongst variables to see if we can eliminate some
@@ -130,7 +148,7 @@ library(PerformanceAnalytics)
 correlation.data <- d %>%
   select(21:30,
          -aspect)
-chart.Correlation(correlation.data, histogram = TRUE, pch = 19) #Excluding variables >= 0.7
+corr.chart <- chart.Correlation(correlation.data, histogram = TRUE, pch = 19) #Excluding variables >= 0.7
 #Just going to keep max temp, slope, aspect, mean cwd, and precipitation
 model_parms5 <- names(d[c("tmx_mean8110", "slope", "aspect", "cwd_mean8110", "ppt_mean8110")])
 
@@ -192,12 +210,12 @@ error.summary.tph <- d %>%
 h.tph <- #Histogram
   ggplot(d)+
   geom_histogram(aes(Tot_TPH), binwidth = 5, center = 2.5,
-                 fill=c(rep(brewer.pal(9,"RdYlBu")[1],4),
+                 fill=c(rep(brewer.pal(9,"RdYlBu")[1],3),
                         rep(brewer.pal(9,"RdYlBu")[2],4),
                         rep(brewer.pal(9,"RdYlBu")[3],4),
                         rep(brewer.pal(9,"RdYlBu")[5],4),
                         rep(brewer.pal(9,"RdYlBu")[7],4),
-                        rep(brewer.pal(9,"RdYlBu")[9],4)
+                        rep(brewer.pal(9,"RdYlBu")[9],3)
                  ),
                  col="black")+
   labs(x = "TPH", y = "Count")+
@@ -227,7 +245,7 @@ prp(tph.cart, varlen = 0, faclen = 0, type = 3, extra = 1, cex = 0.6,
     clip.right.labs = FALSE, #Only applies if using type = 3
     mar = c(2,2,2,2), 
     main = "Historical (1924) tree density \n(TPH ~ max temperature, precipitation, CWD, slope)")
-print(h.tph, vp=viewport(.20, .15, .4, .3))
+print(h.tph, vp=viewport(.82, .75, .3, .3))
 print(grid.text("a", x=unit(1, "npc"), y= unit (1, "npc"), 
                 vp=viewport(.01, .9, .1, .1) ) )
 #dev.off
@@ -243,6 +261,33 @@ d_fia <- read.csv("Data/Derived/d_fia.csv") %>%
          Tot_TPH = DENS_12plus) %>%
   inner_join(., fia_extractions, by = "PLT_CN")
 
+d_fia_summary <- 
+  d_fia %>%
+  summarise(mean_TPH = mean(Tot_TPH),
+            min_TPH = min(Tot_TPH),
+            max_TPH = max(Tot_TPH),
+            BAmet_Tot = mean(TotLvBA_met),
+            BAmet_min = min(TotLvBA_met),
+            BAmet_max = max(TotLvBA_met),
+            Mean_pine_fraction = mean(pine_fraction),
+            min_pine = min(pine_fraction),
+            max_pine = max(pine_fraction),
+            Mean_elev = mean(ELEV_met),
+            Min_elev = round(min(ELEV_met),0),
+            Max_elev = round(max(ELEV_met),0),
+            Mean_precip = mean(ppt_mean8110),
+            min_precip = min(ppt_mean8110),
+            max_precip = max(ppt_mean8110),
+            Mean_temp = mean(tmx_mean8110),
+            min_tmx = min(tmx_mean8110),
+            max_tmx = max(tmx_mean8110),
+            mean_cwd = mean(cwd_mean8110),
+            min_cwd = min(cwd_mean8110),
+            max_cwd = max(cwd_mean8110),
+            mean_slope = mean(slope),
+            min_slope = min(slope),
+            max_slope = max(slope))
+
 #Applying breakpoints from CART to FIA data
 {
   tree_fia <- tph.cart
@@ -251,38 +296,38 @@ d_fia <- read.csv("Data/Derived/d_fia.csv") %>%
   tree_fia$frame[which(tree_fia$frame$var == "<leaf>")[1], "yval" ] <- #Get modern mean
     mean(d_fia[d_fia$tmx_mean8110 < 15, "Tot_TPH"], na.rm = T)
   tree_fia$frame[which(tree_fia$frame$var == "<leaf>")[2], "n" ] <- #Get modern sample size
-    length(which(!is.na(d_fia[d_fia$tmx_mean8110 < 15 & 
-                                d_fia$ppt_mean8110 < 1020, "Tot_TPH"])))
+    length(which(!is.na(d_fia[d_fia$tmx_mean8110 >= 15 & 
+                                d_fia$ppt_mean8110 < 1019, "Tot_TPH"])))
   tree_fia$frame[which(tree_fia$frame$var == "<leaf>")[2], "yval" ] <- #Get modern mean
-    mean(d_fia[d_fia$tmx_mean8110 < 15 &
-                 d_fia$ppt_mean8110 < 1020, "Tot_TPH"], na.rm = T)
+    mean(d_fia[d_fia$tmx_mean8110 >= 15 &
+                 d_fia$ppt_mean8110 < 1019, "Tot_TPH"], na.rm = T)
   tree_fia$frame[which(tree_fia$frame$var == "<leaf>")[3], "n" ] <- #Get modern sample size
-    length(which(!is.na(d_fia[d_fia$tmx_mean8110 < 15 & 
-                                d_fia$ppt_mean8110 >= 1020 & 
-                                d_fia$cwd_mean8110 < 440, "Tot_TPH"])))
+    length(which(!is.na(d_fia[d_fia$tmx_mean8110 >= 15 & 
+                                d_fia$ppt_mean8110 >= 1019 & 
+                                d_fia$ppt_mean8110 >= 1179 & 
+                                d_fia$cwd_mean8110 < 517, "Tot_TPH"])))
   tree_fia$frame[which(tree_fia$frame$var == "<leaf>")[3], "yval" ] <- #Get modern mean
-    mean(d_fia[d_fia$tmx_mean8110 < 15 &
-                 d_fia$ppt_mean8110 >= 1020 &
-                 d_fia$cwd_mean8110 < 440, "Tot_TPH"], na.rm = T)
+    mean(d_fia[d_fia$tmx_mean8110 >= 15 &
+                 d_fia$ppt_mean8110 >= 1019 & 
+                 d_fia$ppt_mean8110 >= 1179 & 
+                 d_fia$cwd_mean8110 < 517, "Tot_TPH"], na.rm = T)
   tree_fia$frame[which(tree_fia$frame$var == "<leaf>")[4], "n" ] <- #Get modern sample size
-    length(which(!is.na(d_fia[d_fia$tmx_mean8110 < 15 & 
-                                d_fia$ppt_mean8110 >= 1020 & 
-                                d_fia$cwd_mean8110 >= 440 & 
-                                d_fia$ppt_mean8110 >= 1179, "Tot_TPH"])))
+    length(which(!is.na(d_fia[d_fia$tmx_mean8110 >= 15 & 
+                                d_fia$ppt_mean8110 >= 1019 & 
+                                d_fia$ppt_mean8110 >= 1179 & 
+                                d_fia$cwd_mean8110 >= 517, "Tot_TPH"])))
   tree_fia$frame[which(tree_fia$frame$var == "<leaf>")[4], "yval" ] <- #Get modern mean
-    mean(d_fia[d_fia$tmx_mean8110 < 15 &
-                 d_fia$ppt_mean8110 >= 1020 &
-                 d_fia$cwd_mean8110 >= 440 &
-                 d_fia$ppt_mean8110 >= 1179, "Tot_TPH"], na.rm = T)
+    mean(d_fia[d_fia$tmx_mean8110 >= 15 & 
+                 d_fia$ppt_mean8110 >= 1019 & 
+                 d_fia$ppt_mean8110 >= 1179 & 
+                 d_fia$cwd_mean8110 >= 517, "Tot_TPH"], na.rm = T)
   tree_fia$frame[which(tree_fia$frame$var == "<leaf>")[5], "n" ] <- #Get modern sample size
-    length(which(!is.na(d_fia[d_fia$tmx_mean8110 < 15 & 
-                                d_fia$ppt_mean8110 >= 1020 & 
-                                d_fia$cwd_mean8110 >= 440 & 
+    length(which(!is.na(d_fia[d_fia$tmx_mean8110 >= 15 & 
+                                d_fia$ppt_mean8110 >= 1019 & 
                                 d_fia$ppt_mean8110 < 1179, "Tot_TPH"])))
   tree_fia$frame[which(tree_fia$frame$var == "<leaf>")[5], "yval" ] <- #Get modern mean
-    mean(d_fia[d_fia$tmx_mean8110 < 15 &
-                 d_fia$ppt_mean8110 >= 1020 &
-                 d_fia$cwd_mean8110 >= 440 &
+    mean(d_fia[d_fia$tmx_mean8110 >= 15 &
+                 d_fia$ppt_mean8110 >= 1019 &
                  d_fia$ppt_mean8110 < 1179, "Tot_TPH"], na.rm = T)
 }
 
@@ -312,8 +357,8 @@ prp(tree_fia, varlen = 0, faclen = 0, type = 3, extra = 1, cex = 0.6,
     #values match tree$frame[,"yval"]
     clip.right.labs = FALSE, #Only applies if using type = 3
     mar = c(2,2,2,2), 
-    main = "Modern (2011 - 2018) tree density \n(TPH ~ max temperature, precipitation, cWD, slope)")
-print(h_fia_tph, vp=viewport(.2, .15, .4, .3))
+    main = "Modern (2011 - 2018) tree density \n(TPH ~ max temperature, precipitation, CWD, slope)")
+print(h_fia_tph, vp=viewport(.82, .75, .3, .3))
 print(grid.text("b", x=unit(1, "npc"), y= unit (1, "npc"), 
                 vp=viewport(.01, .9, .1, .1) ) )
 #dev.off()
@@ -376,7 +421,7 @@ h.ba <- #Histogram
                         rep(brewer.pal(9,"RdYlBu")[3],1),
                         rep(brewer.pal(9,"RdYlBu")[5],1),
                         rep(brewer.pal(9,"RdYlBu")[7],1),
-                        rep(brewer.pal(9,"RdYlBu")[9],3)
+                        rep(brewer.pal(9,"RdYlBu")[9],2)
                  ),
                  col="black")+
   labs(x = "Total Live BA", y = "Count")+
@@ -422,13 +467,13 @@ print(grid.text("a", x=unit(1, "npc"), y= unit (1, "npc"),
                                 d_fia$cwd_mean8110 < 449, "TotLvBA_met"])))
   tree_fia$frame[which(tree_fia$frame$var == "<leaf>")[2], "yval" ] <- #Get modern mean
     mean(d_fia[d_fia$tmx_mean8110 >= 15 & 
-                 d_fia$cwd_mean8110 < 449, "TotLvBA_met"], na.rm = T)
+                 d_fia$cwd_mean8110 < 436, "TotLvBA_met"], na.rm = T)
   tree_fia$frame[which(tree_fia$frame$var == "<leaf>")[3], "n" ] <- #Get modern sample size
     length(which(!is.na(d_fia[d_fia$tmx_mean8110 >= 15 & 
-                                d_fia$cwd_mean8110 >= 449, "TotLvBA_met"])))
+                                d_fia$cwd_mean8110 >= 436, "TotLvBA_met"])))
   tree_fia$frame[which(tree_fia$frame$var == "<leaf>")[3], "yval" ] <- #Get modern mean
     mean(d_fia[d_fia$tmx_mean8110 >= 15 & 
-                 d_fia$cwd_mean8110 >= 449, "TotLvBA_met"], na.rm = T)
+                 d_fia$cwd_mean8110 >= 436, "TotLvBA_met"], na.rm = T)
 }
 
 #No trees match criteria for leaf 2 (elev < 1661 & CWD < 434); chaning NAN to 0
@@ -541,7 +586,7 @@ pine.cart <- rpart(pine_fraction ~ tmx_mean8110 +
                      slope, 
                    method = "anova",
                    data = d,
-                   control = rpart.control(cp = 0.02))
+                   control = rpart.control(cp = 0.03))
 
 #Relabeling variables for CART plot
 levels(pine.cart$frame$var) <- c("<leaf>", "CWD", "precipitation", "slope", "max temperature")
@@ -707,7 +752,9 @@ ggplot(df, aes(pred_pine, pred_tph)) +
   labs(x = "Predicted pine fraction", y = "Predicted TPH")+
   theme(plot.title = element_text(hjust = 0.5, size = 14),
         axis.text = element_text(size = 8),
-        axis.title = element_text(size = 9)) + 
+        axis.title = element_text(size = 9)) +
+  geom_text(x = 0.9, y = 65, label = "r^2 = 0.02") +
+  geom_text(x=0.9, y=60, label="p < 0.001") +
   ggsave("Figures/Lassen-Plumas/tph_pine.png",
          width = 7, height = 7)
 
@@ -725,9 +772,10 @@ ggplot(rf.outputs, aes(num.parameters, value, color = y.var)) +
              scales = "free",
              labeller = labeller(metric = metrics.labs)) + 
   theme_bw() + 
+  scale_color_discrete(labels = c("Total live BA", "Pine fraction", "TPH")) + 
   theme(legend.position = "bottom",
         legend.title = element_blank()) + 
-  labs(x = "number of parameters", y = "") + 
+  labs(x = "Number of predictor variables", y = "") + 
   ggsave("Figures/Lassen-Plumas/RF_comparisons.png",
          width = 7, height = 4)
 

@@ -78,7 +78,7 @@ plot(DEM.boundary, add = TRUE)
 #Start with 274 plots (FIA plots within boundary).
 #Extracting DEM values to FIA plots.
 #Converting elevation of FIA plots (originally in feet) to meters.
-#Selecting FIA plots within the elevation range of the QQ data (1113m - 1939m; removed 70 plots).
+#Selecting FIA plots within the elevation range of the QQ data (1113m - 1923m; removed 70 plots).
 #Selecting plots within "fuzzing" standards (150 m max discrepancy; removed 22 plots).
 #End with 182 plots.
 elevation <- FIA.sf.clip %>%
@@ -86,7 +86,7 @@ elevation <- FIA.sf.clip %>%
          ELEV_met= as.double(ELEV/3.281),
          Elev.discrepancy = abs(ELEV_met - DEM.value)) %>%
   filter(ELEV_met > 1112 &
-           ELEV_met < 1923) %>%
+           ELEV_met <= 1923) %>%
   filter(Elev.discrepancy < 151)
 ```
 
