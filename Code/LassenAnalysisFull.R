@@ -239,13 +239,13 @@ levels(tph.cart$frame$var) <- c("<leaf>", "CWD", "precipitation", "max temperatu
   
 #CART plot of historical TPH and inset of tph histogram
 #Saved ("Figures/Lassen-Plumas/QQ_tph_cart.png)
-prp(tph.cart, varlen = 0, faclen = 0, type = 3, extra = 1, cex = 0.6, 
+prp(tph.cart, varlen = 0, faclen = 0, type = 3, extra = 1, cex = 0.8, 
     box.palette =  c("#f46d43", "#f46d43", "#fdae61"),
     #values match tree$frame[,"yval"]
     clip.right.labs = FALSE, #Only applies if using type = 3
     mar = c(2,2,2,2), 
-    main = "Historical (1924) tree density \n(TPH ~ max temperature, precipitation, CWD, slope)")
-print(h.tph, vp=viewport(.82, .75, .3, .3))
+    main = "Historical (1924) tree density")
+print(h.tph, vp=viewport(.82, .78, .3, .25))
 print(grid.text("a", x=unit(1, "npc"), y= unit (1, "npc"), 
                 vp=viewport(.01, .9, .1, .1) ) )
 #dev.off
@@ -352,13 +352,13 @@ h_fia_tph <- #Histogram
 
 #CART plot of FIA TPH and inset of tph histogram
 #Saved ("Figures/Lassen-Plumas/FIA_tph_cart.png)
-prp(tree_fia, varlen = 0, faclen = 0, type = 3, extra = 1, cex = 0.6,
+prp(tree_fia, varlen = 0, faclen = 0, type = 3, extra = 1, cex = 0.8,
     box.palette =  c("#fdae61", "#f46d43", "#fdae61"),
     #values match tree$frame[,"yval"]
     clip.right.labs = FALSE, #Only applies if using type = 3
     mar = c(2,2,2,2), 
-    main = "Modern (2011 - 2018) tree density \n(TPH ~ max temperature, precipitation, CWD, slope)")
-print(h_fia_tph, vp=viewport(.82, .75, .3, .3))
+    main = "Modern (2011 - 2018) tree density")
+print(h_fia_tph, vp=viewport(.82, .78, .3, .25))
 print(grid.text("b", x=unit(1, "npc"), y= unit (1, "npc"), 
                 vp=viewport(.01, .9, .1, .1) ) )
 #dev.off()
@@ -564,12 +564,12 @@ error.summary.pine <- d %>%
 h.pine <- #Histogram
   ggplot(d)+
   geom_histogram(aes(pine_fraction), binwidth = 0.1,
-                 fill=c(rep(brewer.pal(9,"RdYlBu")[1],2),
-                        rep(brewer.pal(9,"RdYlBu")[2],2),
-                        rep(brewer.pal(9,"RdYlBu")[3],2),
-                        rep(brewer.pal(9,"RdYlBu")[5],2),
+                 fill=c(rep(brewer.pal(9,"RdYlBu")[9],2),
                         rep(brewer.pal(9,"RdYlBu")[7],2),
-                        rep(brewer.pal(9,"RdYlBu")[9],1)
+                        rep(brewer.pal(9,"RdYlBu")[5],2),
+                        rep(brewer.pal(9,"RdYlBu")[3],2),
+                        rep(brewer.pal(9,"RdYlBu")[2],2),
+                        rep(brewer.pal(9,"RdYlBu")[1],1)
                  ),
                  col="black")+
   labs(x = "Pine fraction", y = "Count")+
@@ -593,12 +593,12 @@ levels(pine.cart$frame$var) <- c("<leaf>", "CWD", "precipitation", "slope", "max
 
 #CART plot of historical pine fraction
 #Saved ("Figures/Lassen-Plumas/QQ_pine_cart.png)
-prp(pine.cart, varlen = 0, faclen = 0, type = 3, extra = 1, cex = 0.6, 
-    box.palette =  c("#fdae61", "#ffffbf", "#ffffbf"),
+prp(pine.cart, varlen = 0, faclen = 0, type = 3, extra = 1, cex = 0.8, 
+    box.palette =  c("#ffffbf", "#fdae61", "#fdae61"),
     #values match tree$frame[,"yval"]
     clip.right.labs = FALSE, #Only applies if using type = 3
     mar = c(2,2,2,2), 
-    main = "Historical (1924) pine fraction \n(Pine fraction ~ max temperature, precipitation, CWD, slope)")
+    main = "Historical (1924) pine fraction")
 print(h.pine, vp=viewport(.72, .2, .3, .3))
 print(grid.text("a", x=unit(1, "npc"), y= unit (1, "npc"), 
                 vp=viewport(.01, .9, .1, .1) ))
@@ -646,13 +646,13 @@ print(grid.text("a", x=unit(1, "npc"), y= unit (1, "npc"),
 h_fia_pine <- #Histogram
   ggplot(d_fia)+
   geom_histogram(aes(pine_fraction), binwidth = 0.1,
-                 fill=c(rep(brewer.pal(9,"RdYlBu")[1],2),
-                        rep(brewer.pal(9,"RdYlBu")[2],2),
-                        rep(brewer.pal(9,"RdYlBu")[3],2),
+                 fill=c(rep(brewer.pal(9,"RdYlBu")[9],2),
+                        rep(brewer.pal(9,"RdYlBu")[8],2),
+                        rep(brewer.pal(9,"RdYlBu")[7],2),
                         rep(brewer.pal(9,"RdYlBu")[5],2),
-                        rep(brewer.pal(9,"RdYlBu")[7],1),
-                        rep(brewer.pal(9,"RdYlBu")[8],1),
-                        rep(brewer.pal(9,"RdYlBu")[9],1)
+                        rep(brewer.pal(9,"RdYlBu")[3],1),
+                        rep(brewer.pal(9,"RdYlBu")[2],1),
+                        rep(brewer.pal(9,"RdYlBu")[1],1)
                  ),
                  col="black")+
   labs(x = "Pine fraction", y = "Count")+
@@ -664,12 +664,12 @@ h_fia_pine <- #Histogram
 
 #CART plot of FIA TPH and inset of histogram
 #Saved ("Figures/Lassen-Plumas/FIA_pine_cart.png)
-prp(tree_fia, varlen = 0, faclen = 0, type = 3, extra = 1, cex = 0.6,
-    box.palette =  c("#d73027", "#f46d43", "#fdae61", "#fdae61", "#f46d43", "#f46d43"),
+prp(tree_fia, varlen = 0, faclen = 0, type = 3, extra = 1, cex = 0.8,
+    box.palette =  c("#4575b4", "#74add1", "#abd9e9", "#74add1", "#abd9e9", "#abd9e9"),
     #values match tree$frame[,"yval"]
     clip.right.labs = FALSE, #Only applies if using type = 3
     mar = c(2,2,2,2), 
-    main = "Modern (2011 - 2018) pine fraction \n(Pine fraction ~ max temperature, precipitation, CWD, slope)")
+    main = "Modern (2011 - 2018) pine fraction")
 print(h_fia_pine, vp=viewport(.72, .2, .3, .3))
 print(grid.text("b", x=unit(1, "npc"), y= unit (1, "npc"), 
                 vp=viewport(.01, .9, .1, .1) ))

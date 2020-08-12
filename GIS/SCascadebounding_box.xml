@@ -1,0 +1,2 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<metadata xml:lang="en"><Esri><CreaDate>20200806</CreaDate><CreaTime>16070700</CreaTime><ArcGISFormat>1.0</ArcGISFormat><SyncOnce>TRUE</SyncOnce><DataProperties><lineage><Process ToolSource="c:\program files (x86)\arcgis\desktop10.7\ArcToolbox\Toolboxes\3D Analyst Tools.tbx\RasterDomain" Date="20200806" Time="160707">RasterDomain dem_aligned.tif C:\Users\Alexis\Documents\GitHub\Collins_Pine\GIS\bounding_box.shp POLYGON</Process></lineage></DataProperties></Esri></metadata>
