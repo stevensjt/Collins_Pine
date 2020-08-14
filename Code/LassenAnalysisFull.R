@@ -361,6 +361,11 @@ prp(tree_fia, varlen = 0, faclen = 0, type = 3, extra = 1, cex = 0.8,
 print(h_fia_tph, vp=viewport(.82, .78, .3, .25))
 print(grid.text("b", x=unit(1, "npc"), y= unit (1, "npc"), 
                 vp=viewport(.01, .9, .1, .1) ) )
+
+#Plotting blank trees (requested by Brandon)
+#Saved ("Figures/Lassen-Plumas/tph_cart_blank.png)
+plot(tph.cart)
+
 #dev.off()
 
 ####3b. Basal Area####
@@ -674,6 +679,10 @@ print(h_fia_pine, vp=viewport(.72, .2, .3, .3))
 print(grid.text("b", x=unit(1, "npc"), y= unit (1, "npc"), 
                 vp=viewport(.01, .9, .1, .1) ))
 #dev.off()
+
+#Plotting blank tree (requested by Brandon)
+#Saved in "Figures/Lassen-Plumas/pine_cart_blank.png"
+plot(pine.cart)
 
 ####4. Predictive Maps####
 
